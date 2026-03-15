@@ -16,6 +16,10 @@ the physiological situation in natural-language terms.
 from app.models.userstate import SharedState, SensorSnapshot
 
 
+SENSOR_SOURCE = "sensor_interpreter"
+TICK_SOURCE_MARKER = "night_tick.latest_sensor"
+
+
 def run(state: SharedState) -> SharedState:
     """
     Derive interpretive signals from the latest sensor snapshot and append
@@ -33,9 +37,20 @@ def run(state: SharedState) -> SharedState:
         return state
 
     summary = extract_features(sensor)
+    signal_hypotheses = _build_signal_hypotheses(summary, sensor)
+    tick_timestamp = sensor.timestamp
 
     updated_hypotheses = state.hypotheses + [
-        {"source": "sensor_interpreter", "signals": summary}
+        {
+            "source": SENSOR_SOURCE,
+            "timestamp": tick_timestamp,
+            "tick_source": TICK_SOURCE_MARKER,
+            "signal_summary": summary,
+            # Keep legacy key for compatibility with existing readers.
+            "signals": summary,
+            # Canonical per-signal payload for downstream reasoning/tracing.
+            "signal_hypotheses": signal_hypotheses,
+        }
     ]
     return state.model_copy(update={"hypotheses": updated_hypotheses})
 
@@ -61,6 +76,104 @@ def extract_features(sensor: SensorSnapshot) -> dict:
         "light_status":     _light_status(sensor.light_level),
         "breathing_status": _breathing_status(sensor.breathing_rate),
     }
+
+
+def _build_signal_hypotheses(summary: dict, sensor: SensorSnapshot) -> list[dict]:
+    """Build a consistent per-signal hypothesis payload for the current tick."""
+    evidence = {
+        "heart_rate": sensor.heart_rate,
+        "hrv": sensor.hrv,
+        "movement": sensor.movement,
+        "noise_db": sensor.noise_db,
+        "light_level": sensor.light_level,
+        "breathing_rate": sensor.breathing_rate,
+    }
+
+    signal_specs = (
+        ("noise_alert", summary["noise_alert"], _severity_for_noise_alert),
+        ("movement_spike", summary["movement_level"], _severity_for_movement),
+        ("hr_elevated", summary["hr_status"], _severity_for_hr_status),
+        ("hrv_recovery", summary["hrv_quality"], _severity_for_hrv_quality),
+        ("light_exposure", summary["light_status"], _severity_for_light_status),
+        (
+            "breathing_irregularity",
+            summary["breathing_status"],
+            _severity_for_breathing_status,
+        ),
+    )
+
+    return [
+        {
+            "signal": signal_name,
+            "severity": severity_fn(label),
+            "label": label,
+            "evidence": evidence,
+            "tick_timestamp": sensor.timestamp,
+            "tick_source": TICK_SOURCE_MARKER,
+        }
+        for signal_name, label, severity_fn in signal_specs
+    ]
+
+
+def _severity_for_hr_status(label: str) -> float:
+    return {
+        "unknown": 0.0,
+        "very_low": 0.65,
+        "low_resting": 0.2,
+        "normal": 0.1,
+        "mildly_elevated": 0.6,
+        "elevated": 0.9,
+    }.get(label, 0.0)
+
+
+def _severity_for_hrv_quality(label: str) -> float:
+    return {
+        "unknown": 0.0,
+        "excellent": 0.1,
+        "good": 0.2,
+        "moderate": 0.45,
+        "low": 0.8,
+    }.get(label, 0.0)
+
+
+def _severity_for_movement(label: str) -> float:
+    return {
+        "unknown": 0.0,
+        "still": 0.05,
+        "minimal": 0.2,
+        "restless": 0.65,
+        "active": 0.95,
+    }.get(label, 0.0)
+
+
+def _severity_for_noise_alert(label: str) -> float:
+    return {
+        "unknown": 0.0,
+        "quiet": 0.05,
+        "moderate": 0.35,
+        "loud": 0.75,
+        "very_loud": 1.0,
+    }.get(label, 0.0)
+
+
+def _severity_for_light_status(label: str) -> float:
+    return {
+        "unknown": 0.0,
+        "dark": 0.05,
+        "dim": 0.2,
+        "moderate": 0.55,
+        "bright": 0.9,
+    }.get(label, 0.0)
+
+
+def _severity_for_breathing_status(label: str) -> float:
+    return {
+        "unknown": 0.0,
+        "very_slow": 0.8,
+        "normal": 0.1,
+        "slightly_elevated": 0.55,
+        "elevated": 0.9,
+    }.get(label, 0.0)
 
 
 def _hr_status(hr: float | None) -> str:

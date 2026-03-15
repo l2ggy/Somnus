@@ -228,10 +228,25 @@ def _trace_step(step: int, agent: str, output: dict) -> dict:
 
 
 def _sensor_interpreter_summary(state: SharedState) -> dict:
-    """Return the signals dict from the most recent sensor_interpreter hypothesis."""
+    """Return a compact but consistent summary for the latest sensor tick."""
     for h in reversed(state.hypotheses):
-        if h.get("source") == "sensor_interpreter":
-            return h.get("signals", {})
+        if h.get("source") != "sensor_interpreter":
+            continue
+
+        signal_hypotheses = h.get("signal_hypotheses", [])
+        return {
+            "tick_timestamp": h.get("timestamp"),
+            "tick_source": h.get("tick_source"),
+            "signals": h.get("signal_summary", h.get("signals", {})),
+            "signal_hypotheses": [
+                {
+                    "signal": sh.get("signal"),
+                    "severity": sh.get("severity"),
+                    "label": sh.get("label"),
+                }
+                for sh in signal_hypotheses
+            ],
+        }
     return {}
 
 
