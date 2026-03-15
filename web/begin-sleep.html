@@ -89,8 +89,35 @@
 
               <section class="begin-sleep-step" data-step="3" hidden>
                 <h2 class="begin-sleep-step__title">Ready to begin</h2>
-                <p class="begin-sleep-step__hint">We’ll send these preferences to <code>/api/session/start</code>.</p>
-                <pre id="payload-preview" class="begin-sleep-preview"></pre>
+                <p class="begin-sleep-step__hint">Review your sleep preferences before we start.</p>
+                <div class="begin-sleep-summary" id="payload-preview">
+                  <div class="begin-sleep-summary__row">
+                    <p class="begin-sleep-summary__label">User ID</p>
+                    <p class="begin-sleep-summary__value" id="preview-user-id">Not set</p>
+                  </div>
+                  <div class="begin-sleep-summary__row">
+                    <p class="begin-sleep-summary__label">Wake-up time</p>
+                    <p class="begin-sleep-summary__value" id="preview-wake-time">7:30 AM</p>
+                  </div>
+                  <div class="begin-sleep-summary__row">
+                    <p class="begin-sleep-summary__label">Sleep goal</p>
+                    <p class="begin-sleep-summary__value" id="preview-sleep-goal">Balanced sleep</p>
+                  </div>
+                  <div class="begin-sleep-summary__row">
+                    <p class="begin-sleep-summary__label">Aggressiveness</p>
+                    <p class="begin-sleep-summary__value" id="preview-aggressiveness">Medium</p>
+                  </div>
+
+                  <div class="begin-sleep-summary__group">
+                    <p class="begin-sleep-summary__label">Preferred audio</p>
+                    <ul class="begin-sleep-summary__list" id="preview-preferred-audio"></ul>
+                  </div>
+
+                  <div class="begin-sleep-summary__group">
+                    <p class="begin-sleep-summary__label">Disliked audio</p>
+                    <ul class="begin-sleep-summary__list" id="preview-disliked-audio"></ul>
+                  </div>
+                </div>
               </section>
 
               <div class="begin-sleep-actions">
@@ -184,6 +211,12 @@
       const progressBar = progressFill?.parentElement;
       const status = document.getElementById('session-status');
       const payloadPreview = document.getElementById('payload-preview');
+      const previewUserId = document.getElementById('preview-user-id');
+      const previewWakeTime = document.getElementById('preview-wake-time');
+      const previewSleepGoal = document.getElementById('preview-sleep-goal');
+      const previewAggressiveness = document.getElementById('preview-aggressiveness');
+      const previewPreferredAudio = document.getElementById('preview-preferred-audio');
+      const previewDislikedAudio = document.getElementById('preview-disliked-audio');
       const form = document.getElementById('begin-sleep-form');
       const activeUserIdLabel = document.getElementById('active-user-id');
 
@@ -255,6 +288,47 @@
         const period = hour >= 12 ? 'PM' : 'AM';
         const normalizedHour = hour % 12 || 12;
         return `${normalizedHour}:${String(minute).padStart(2, '0')} ${period}`;
+      }
+
+      function formatLabel(value) {
+        return String(value || '')
+          .split('_')
+          .filter(Boolean)
+          .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+          .join(' ');
+      }
+
+      function renderAudioList(listElement, values, emptyText) {
+        if (!listElement) return;
+        listElement.innerHTML = '';
+
+        if (!values.length) {
+          const emptyItem = document.createElement('li');
+          emptyItem.className = 'begin-sleep-summary__empty';
+          emptyItem.textContent = emptyText;
+          listElement.appendChild(emptyItem);
+          return;
+        }
+
+        values.forEach((value) => {
+          const item = document.createElement('li');
+          item.className = 'begin-sleep-summary__pill';
+          item.textContent = formatLabel(value);
+          listElement.appendChild(item);
+        });
+      }
+
+      function renderPayloadSummary(payload) {
+        if (!payloadPreview) return;
+        const preferences = payload?.preferences || {};
+
+        if (previewUserId) previewUserId.textContent = payload.user_id || 'Not set';
+        if (previewWakeTime) previewWakeTime.textContent = formatWakeTime(preferences.target_wake_time);
+        if (previewSleepGoal) previewSleepGoal.textContent = formatLabel(preferences.goals?.[0] || 'balanced_sleep');
+        if (previewAggressiveness) previewAggressiveness.textContent = formatLabel(preferences.intervention_aggressiveness || 'medium');
+
+        renderAudioList(previewPreferredAudio, preferences.preferred_audio || [], 'No preferred audio selected');
+        renderAudioList(previewDislikedAudio, preferences.disliked_audio || [], 'No disliked audio selected');
       }
 
       function setExperienceState(state) {
@@ -499,7 +573,7 @@
         submitBtn.hidden = currentStep !== steps.length - 1;
 
         if (currentStep === steps.length - 1 && payloadPreview) {
-          payloadPreview.textContent = JSON.stringify(collectPayload(), null, 2);
+          renderPayloadSummary(collectPayload());
         }
       }
 
