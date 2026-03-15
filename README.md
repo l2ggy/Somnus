@@ -28,7 +28,6 @@ The goal is simple: **fewer disruptions, smoother wakeups, and personalized slee
 - **Devpost:** https://devpost.com/software/somnus-udcfsk
 - **Canva presentation:** https://www.canva.com/design/DAHD6B1R3jA/Z2kF_LeWoFk4smkhWoUUJw/view
 - **Youtube demo:** https://www.youtube.com/watch?v=_3oaMIZYD38
-- **Tech stack:** https://www.canva.com/design/DAHEBLwbQpk/LWZMTwcLAIbBNEK5P784XA/view?utm_content=DAHEBLwbQpk&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h984f96f9a9 
 
 ---
 
@@ -53,6 +52,8 @@ User journal feedback is converted into reflection insights and preference updat
 ---
 
 ## Technical architecture
+
+Tech stack at `docs/Somnus-tech-stack.png`. 
 
 Somnus is implemented as an **agentic FastAPI backend** with a shared-state contract:
 
