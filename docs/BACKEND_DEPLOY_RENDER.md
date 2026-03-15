@@ -39,10 +39,26 @@ Render will build from these directly.
    - **Name**: `somnus-api`
    - **Runtime**: `Docker`
    - **Region**: nearest your users
-   - **Health Check Path**: `/health`
+   - In the form section usually called **Advanced** (or **Health & Alerts**), find **Health Check Path** and enter: `/health`
 7. Click **Create Web Service**.
 
 Render builds image from `Dockerfile` and starts the API.
+
+### If you missed the health check field during creation
+
+You can set it after deploy:
+1. Open your service in Render.
+2. Click **Settings**.
+3. Scroll to **Health Check Path**.
+4. Enter `/health`.
+5. Click **Save Changes**.
+
+### How to confirm health check is correctly configured
+
+1. Open service page → **Events** or **Logs** and confirm no repeated health-check failures.
+2. Open `https://<your-url>/health` in browser.
+3. Confirm response is:
+   - `{"status":"ok","service":"somnus"}`
 
 ---
 
