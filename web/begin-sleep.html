@@ -104,6 +104,69 @@
           </section>
         </div>
       </section>
+
+      <section class="sleep-session-screen overlay-screen" id="sleep-session-screen" aria-live="polite" aria-label="Sleep session running" hidden>
+        <img class="sleep-session-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="320" height="100" />
+        <p class="sleep-session-screen__title">Analyzing your sleep....</p>
+        <p class="sleep-session-screen__subtitle" id="wake-time-summary">Wake-up time set to 7:30 AM</p>
+        <button class="sleep-session-screen__cancel" type="button" id="cancel-session">Tap to cancel</button>
+        <button class="menu-screen__option sleep-session-screen__end" type="button" id="end-session">End session</button>
+      </section>
+
+      <section class="morning-prompt overlay-screen" id="morning-prompt" aria-live="polite" aria-label="Morning reflection prompt" hidden>
+        <p class="morning-prompt__title">Good morning!</p>
+        <p class="morning-prompt__copy">Would you like to answer a few quick questions so Somnus can personalize and improve your future sleep plans? You can update your response later in <strong>My Sleep Journal.</strong></p>
+        <div class="morning-prompt__actions">
+          <button class="menu-screen__option" type="button" id="morning-yes">Yes</button>
+          <a class="menu-screen__option" href="/sleep-stats.html">No, view My Sleep Stats</a>
+          <a class="menu-screen__option" href="/menu.html">No, (back to home page)</a>
+        </div>
+      </section>
+
+      <section class="journal-quiz overlay-screen" id="journal-quiz" aria-live="polite" aria-label="New sleep journal entry" hidden>
+        <h2 class="journal-quiz__heading">New Sleep Journal Entry</h2>
+        <div class="journal-quiz__card">
+          <div class="journal-quiz__progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="33">
+            <div class="journal-quiz__progress-fill" id="journal-progress-fill"></div>
+          </div>
+
+          <form id="journal-form" class="journal-quiz__form">
+            <section class="journal-quiz__step" data-journal-step="0">
+              <h3>How do you feel?</h3>
+              <div class="journal-quiz__choices" role="radiogroup" aria-label="How do you feel?">
+                <button type="button" class="journal-choice" data-rested="9">Rested</button>
+                <button type="button" class="journal-choice" data-rested="6">A little groggy</button>
+                <button type="button" class="journal-choice" data-rested="3">Still tired</button>
+              </div>
+            </section>
+
+            <section class="journal-quiz__step" data-journal-step="1" hidden>
+              <h3>How many awakenings do you remember?</h3>
+              <div class="journal-quiz__choices" role="radiogroup" aria-label="Awakenings reported">
+                <button type="button" class="journal-choice" data-awakenings="0">None</button>
+                <button type="button" class="journal-choice" data-awakenings="2">1–2 times</button>
+                <button type="button" class="journal-choice" data-awakenings="4">3+ times</button>
+              </div>
+            </section>
+
+            <section class="journal-quiz__step" data-journal-step="2" hidden>
+              <h3>Any other notes?</h3>
+              <div class="journal-quiz__choices" role="radiogroup" aria-label="Additional notes">
+                <button type="button" class="journal-choice" data-notes-mode="talk">Talk to Somnus</button>
+                <button type="button" class="journal-choice" data-notes-mode="none">No thanks</button>
+              </div>
+              <textarea id="journal-notes" class="journal-quiz__textarea" placeholder="Share anything about your sleep..." hidden></textarea>
+            </section>
+
+            <div class="journal-quiz__actions">
+              <button class="menu-screen__option begin-sleep-btn begin-sleep-btn--secondary" type="button" id="journal-back" disabled>Back</button>
+              <button class="menu-screen__option begin-sleep-btn" type="button" id="journal-next">Next</button>
+              <button class="menu-screen__option begin-sleep-btn" type="submit" id="journal-submit" hidden>Submit journal</button>
+            </div>
+            <p class="begin-sleep-status" id="journal-status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
     </main>
 
     <script>
@@ -118,9 +181,60 @@
       const payloadPreview = document.getElementById('payload-preview');
       const form = document.getElementById('begin-sleep-form');
       const activeUserIdLabel = document.getElementById('active-user-id');
+      const sleepSessionScreen = document.getElementById('sleep-session-screen');
+      const morningPrompt = document.getElementById('morning-prompt');
+      const journalQuiz = document.getElementById('journal-quiz');
+      const wakeTimeSummary = document.getElementById('wake-time-summary');
+      const cancelSessionBtn = document.getElementById('cancel-session');
+      const endSessionBtn = document.getElementById('end-session');
+      const morningYesBtn = document.getElementById('morning-yes');
+      const journalForm = document.getElementById('journal-form');
+      const journalBackBtn = document.getElementById('journal-back');
+      const journalNextBtn = document.getElementById('journal-next');
+      const journalSubmitBtn = document.getElementById('journal-submit');
+      const journalStatus = document.getElementById('journal-status');
+      const journalProgressFill = document.getElementById('journal-progress-fill');
+      const journalNotes = document.getElementById('journal-notes');
+      const journalSteps = Array.from(document.querySelectorAll('.journal-quiz__step'));
       const storageKey = 'somnus_demo_user_id';
       const sessionStartUrl = '/api/session/start';
       let currentStep = 0;
+      let journalStep = 0;
+      const journalData = {
+        rested_score: null,
+        awakenings_reported: null,
+        notes_mode: null,
+      };
+
+      function formatWakeTime(timeValue) {
+        if (!timeValue || !timeValue.includes(':')) return '7:30 AM';
+        const [hourText, minuteText] = timeValue.split(':');
+        const hour = Number(hourText);
+        const minute = Number(minuteText);
+        if (Number.isNaN(hour) || Number.isNaN(minute)) return '7:30 AM';
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const normalizedHour = hour % 12 || 12;
+        return `${normalizedHour}:${String(minute).padStart(2, '0')} ${period}`;
+      }
+
+      function setOverlay(name) {
+        const map = {
+          none: null,
+          sleep: sleepSessionScreen,
+          morning: morningPrompt,
+          journal: journalQuiz,
+        };
+
+        [sleepSessionScreen, morningPrompt, journalQuiz].forEach((section) => {
+          if (!section) return;
+          const shouldShow = section === map[name];
+          section.hidden = !shouldShow;
+          section.classList.toggle('overlay-screen--visible', shouldShow);
+        });
+
+        const isOverlay = name !== 'none';
+        document.body.classList.toggle('sleep-session-active', isOverlay);
+      }
 
       const flowText = [
         'Set wake-up time → Set wake-up audio → Set sleep profile → Begin sleep',
@@ -190,6 +304,50 @@
         }
       }
 
+      function resetJournalChoicesForStep(stepIndex) {
+        const section = journalSteps[stepIndex];
+        if (!section) return;
+        const choices = section.querySelectorAll('.journal-choice');
+        choices.forEach((choice) => choice.classList.remove('is-selected'));
+
+        if (stepIndex === 0 && journalData.rested_score !== null) {
+          const active = section.querySelector(`[data-rested="${journalData.rested_score}"]`);
+          active?.classList.add('is-selected');
+        }
+
+        if (stepIndex === 1 && journalData.awakenings_reported !== null) {
+          const active = section.querySelector(`[data-awakenings="${journalData.awakenings_reported}"]`);
+          active?.classList.add('is-selected');
+        }
+
+        if (stepIndex === 2 && journalData.notes_mode) {
+          const active = section.querySelector(`[data-notes-mode="${journalData.notes_mode}"]`);
+          active?.classList.add('is-selected');
+        }
+      }
+
+      function renderJournalStep() {
+        journalSteps.forEach((step, index) => {
+          step.hidden = index !== journalStep;
+        });
+
+        const percent = ((journalStep + 1) / journalSteps.length) * 100;
+        journalProgressFill.style.width = `${percent}%`;
+        journalProgressFill.parentElement?.setAttribute('aria-valuenow', String(Math.round(percent)));
+
+        journalBackBtn.disabled = journalStep === 0;
+        journalNextBtn.hidden = journalStep === journalSteps.length - 1;
+        journalSubmitBtn.hidden = journalStep !== journalSteps.length - 1;
+        resetJournalChoicesForStep(journalStep);
+      }
+
+      function validateJournalStep() {
+        if (journalStep === 0 && journalData.rested_score === null) return false;
+        if (journalStep === 1 && journalData.awakenings_reported === null) return false;
+        if (journalStep === 2 && !journalData.notes_mode) return false;
+        return true;
+      }
+
       prevBtn?.addEventListener('click', () => {
         status.textContent = '';
         currentStep = Math.max(0, currentStep - 1);
@@ -226,9 +384,108 @@
             throw new Error(errorText || `Request failed (${response.status})`);
           }
 
-          status.textContent = 'Session started successfully.';
+          const formattedWakeTime = formatWakeTime(payload.preferences?.target_wake_time);
+          if (wakeTimeSummary) {
+            wakeTimeSummary.textContent = `Wake-up time set to ${formattedWakeTime}`;
+          }
+          status.textContent = '';
+          setOverlay('sleep');
         } catch (error) {
-          status.textContent = `Could not start session (${error.message}). If this is \"Load failed\", check that the deployed app has the /api proxy route configured.`;
+          status.textContent = `Could not start session (${error.message}). If this is "Load failed", check that the deployed app has the /api proxy route configured.`;
+        }
+      });
+
+      cancelSessionBtn?.addEventListener('click', () => {
+        setOverlay('none');
+        status.textContent = 'Sleep session cancelled.';
+      });
+
+      endSessionBtn?.addEventListener('click', () => {
+        setOverlay('morning');
+      });
+
+      morningYesBtn?.addEventListener('click', () => {
+        setOverlay('journal');
+        renderJournalStep();
+      });
+
+      journalForm?.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (!target.classList.contains('journal-choice')) return;
+
+        if (target.dataset.rested) {
+          journalData.rested_score = Number(target.dataset.rested);
+        }
+        if (target.dataset.awakenings) {
+          journalData.awakenings_reported = Number(target.dataset.awakenings);
+        }
+        if (target.dataset.notesMode) {
+          journalData.notes_mode = target.dataset.notesMode;
+          journalNotes.hidden = target.dataset.notesMode !== 'talk';
+          if (target.dataset.notesMode !== 'talk') journalNotes.value = '';
+        }
+
+        resetJournalChoicesForStep(journalStep);
+      });
+
+      journalBackBtn?.addEventListener('click', () => {
+        journalStatus.textContent = '';
+        journalStep = Math.max(0, journalStep - 1);
+        renderJournalStep();
+      });
+
+      journalNextBtn?.addEventListener('click', () => {
+        if (!validateJournalStep()) {
+          journalStatus.textContent = 'Please choose an option to continue.';
+          return;
+        }
+        journalStatus.textContent = '';
+        journalStep = Math.min(journalSteps.length - 1, journalStep + 1);
+        renderJournalStep();
+      });
+
+      journalForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (!validateJournalStep()) {
+          journalStatus.textContent = 'Please complete this step first.';
+          return;
+        }
+
+        const userId = getStoredUserId();
+        if (!userId) {
+          journalStatus.textContent = 'Missing user id. Set Demo User ID on Menu first.';
+          return;
+        }
+
+        const payload = {
+          date: new Date().toISOString().slice(0, 10),
+          rested_score: journalData.rested_score,
+          awakenings_reported: journalData.awakenings_reported,
+          notes: journalData.notes_mode === 'talk' ? journalNotes.value.trim() : '',
+        };
+
+        journalStatus.textContent = 'Submitting morning journal...';
+
+        try {
+          const response = await fetch(`/api/session/${encodeURIComponent(userId)}/journal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Request failed (${response.status})`);
+          }
+
+          journalStatus.textContent = 'Journal submitted. Redirecting to Sleep Journal...';
+          setTimeout(() => {
+            window.location.href = '/sleep-journal.html';
+          }, 900);
+        } catch (error) {
+          journalStatus.textContent = `Could not submit journal (${error.message}).`;
         }
       });
 
