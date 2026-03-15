@@ -14,9 +14,13 @@ fastapi uvicorn pydantic openai python-dotenv
 
 ## Workflow 
 
-# Future Improvements 
+## Future Improvements 
+- Scale from web app to native
+- Integrate physical interventions (e.g. smart watch vibration) to be more accessible 
 
 ## Documentation
 - Project proposal: `PROJECT_PROPOSAL.md`
 - Web/mobile deployment plan: `DEPLOYMENT_WEB_MOBILE.md`
+
+## Resources and References
 
