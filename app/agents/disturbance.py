@@ -14,9 +14,10 @@ Threat taxonomy:
   high_movement   — significant body movement suggesting partial arousal
   elevated_hr     — heart rate climbing above sleep-typical range
 
-Each detected threat:
-  1. Sets sleep_state.disturbance_reason (first threat wins per tick)
-  2. Adds a proportional wake_risk bump (capped at 1.0)
+Each tick:
+  1. Computes a weighted disturbance score from noise/light/movement/physiology
+  2. Selects sleep_state.disturbance_reason using explicit priority order
+  3. Maps disturbance score to a wake_risk bump (all risk values clamped to 0–1)
 
 If no threat is detected the disturbance_reason is cleared, allowing the
 intervention agent to ramp down on the next tick.
@@ -48,7 +49,7 @@ def run(state: SharedState) -> SharedState:
     reason, risk_bump = _detect(sensor, state.sleep_state.phase)
 
     current = state.sleep_state
-    new_wake_risk = round(min(1.0, current.wake_risk + risk_bump), 2)
+    new_wake_risk = round(_clamp01(current.wake_risk + risk_bump), 2)
 
     # Skip update only when nothing has actually changed.
     if reason == current.disturbance_reason and new_wake_risk == current.wake_risk:
@@ -66,48 +67,100 @@ def run(state: SharedState) -> SharedState:
 # ---------------------------------------------------------------------------
 
 # Phase-specific noise thresholds: deep sleep is more sensitive to noise.
-_NOISE_THRESHOLD = {"deep": 45, "rem": 50, "light": 58, "awake": 70, "unknown": 55}
+_NOISE_THRESHOLD_DB = {"deep": 45.0, "rem": 50.0, "light": 58.0, "awake": 70.0, "unknown": 55.0}
 
-# How much each disturbance type bumps wake_risk.
-_RISK_BUMP = {
-    "noise_spike":    0.20,
-    "light_spike":    0.25,
-    "high_movement":  0.30,
-    "elevated_hr":    0.15,
+# Component thresholds/ranges for normalizing raw sensor values into 0–1.
+_LIGHT_THRESHOLD = 0.35
+_LIGHT_RANGE = 0.65
+_MOVEMENT_THRESHOLD = 0.60
+_MOVEMENT_RANGE = 0.40
+_HEART_RATE_THRESHOLD = 85.0
+_HEART_RATE_RANGE = 30.0
+_BREATHING_RATE_THRESHOLD = 18.0
+_BREATHING_RATE_RANGE = 8.0
+
+# Weighted contribution to a single disturbance score.
+_DISTURBANCE_WEIGHTS = {
+    "noise": 0.28,
+    "light": 0.30,
+    "movement": 0.27,
+    "physiology": 0.15,
 }
+
+# Reason selection priority (first active reason wins).
+_DISTURBANCE_REASON_PRIORITY = (
+    "light_spike",
+    "noise_spike",
+    "high_movement",
+    "elevated_hr",
+)
+
+# Score-to-risk mapping; score is first clamped to [0, 1], then scaled.
+_MAX_RISK_BUMP_PER_TICK = 0.35
 
 
 def _detect(sensor, phase: str) -> tuple[str | None, float]:
     """
     Return (disturbance_reason, risk_bump).
 
-    Checks threats in priority order: light > noise > movement > hr.
-    Only the highest-priority active threat is returned per tick.
+    Combines all disturbance channels into a single weighted score, then
+    chooses a single disturbance reason using explicit priority.
     """
-    # Light spike — clear and immediate arousal signal
-    if sensor.light_level is not None and sensor.light_level > 0.35:
-        severity = (sensor.light_level - 0.35) / 0.65  # 0 → 1
-        bump = round(_RISK_BUMP["light_spike"] * (0.5 + 0.5 * severity), 2)
-        return f"light_spike:{sensor.light_level:.2f}", bump
+    noise_threshold = _NOISE_THRESHOLD_DB.get(phase, _NOISE_THRESHOLD_DB["unknown"])
+    noise_score = _normalize_above(sensor.noise_db, noise_threshold, 30.0)
+    light_score = _normalize_above(sensor.light_level, _LIGHT_THRESHOLD, _LIGHT_RANGE)
+    movement_score = _normalize_above(sensor.movement, _MOVEMENT_THRESHOLD, _MOVEMENT_RANGE)
 
-    # Noise — threshold depends on current sleep phase
-    noise_threshold = _NOISE_THRESHOLD.get(phase, 55)
-    if sensor.noise_db is not None and sensor.noise_db > noise_threshold:
-        severity = min(1.0, (sensor.noise_db - noise_threshold) / 30)
-        bump = round(_RISK_BUMP["noise_spike"] * (0.4 + 0.6 * severity), 2)
-        return f"noise_spike:{sensor.noise_db:.0f}dB", bump
+    hr_score = _normalize_above(sensor.heart_rate, _HEART_RATE_THRESHOLD, _HEART_RATE_RANGE)
+    br_score = _normalize_above(
+        sensor.breathing_rate,
+        _BREATHING_RATE_THRESHOLD,
+        _BREATHING_RATE_RANGE,
+    )
+    physiology_score = _clamp01(max(hr_score, br_score))
 
-    # High movement
-    if sensor.movement is not None and sensor.movement > 0.60:
-        severity = min(1.0, (sensor.movement - 0.60) / 0.40)
-        bump = round(_RISK_BUMP["high_movement"] * (0.5 + 0.5 * severity), 2)
-        return f"high_movement:{sensor.movement:.2f}", bump
+    disturbance_score = _clamp01(
+        (_DISTURBANCE_WEIGHTS["noise"] * noise_score)
+        + (_DISTURBANCE_WEIGHTS["light"] * light_score)
+        + (_DISTURBANCE_WEIGHTS["movement"] * movement_score)
+        + (_DISTURBANCE_WEIGHTS["physiology"] * physiology_score)
+    )
+    risk_bump = round(_map_disturbance_to_risk_bump(disturbance_score), 2)
 
-    # Elevated heart rate
-    if sensor.heart_rate is not None and sensor.heart_rate > 85:
-        severity = min(1.0, (sensor.heart_rate - 85) / 30)
-        bump = round(_RISK_BUMP["elevated_hr"] * (0.5 + 0.5 * severity), 2)
-        return f"elevated_hr:{sensor.heart_rate:.0f}bpm", bump
+    active_reasons = {
+        "light_spike": light_score > 0.0,
+        "noise_spike": noise_score > 0.0,
+        "high_movement": movement_score > 0.0,
+        "elevated_hr": hr_score > 0.0,
+    }
 
-    # All clear — no bump, clear the reason
+    for reason_name in _DISTURBANCE_REASON_PRIORITY:
+        if active_reasons[reason_name]:
+            if reason_name == "light_spike":
+                return f"light_spike:{(sensor.light_level or 0.0):.2f}", risk_bump
+            if reason_name == "noise_spike":
+                return f"noise_spike:{(sensor.noise_db or 0.0):.0f}dB", risk_bump
+            if reason_name == "high_movement":
+                return f"high_movement:{(sensor.movement or 0.0):.2f}", risk_bump
+            return f"elevated_hr:{(sensor.heart_rate or 0.0):.0f}bpm", risk_bump
+
     return None, 0.0
+
+
+def _normalize_above(value: float | None, threshold: float, span: float) -> float:
+    """Normalize values above a threshold into [0, 1]."""
+    if value is None:
+        return 0.0
+    if span <= 0:
+        return 1.0 if value > threshold else 0.0
+    return _clamp01((value - threshold) / span)
+
+
+def _map_disturbance_to_risk_bump(disturbance_score: float) -> float:
+    """Map normalized disturbance score into a bounded wake-risk bump."""
+    return _clamp01(disturbance_score) * _MAX_RISK_BUMP_PER_TICK
+
+
+def _clamp01(value: float) -> float:
+    """Clamp a numeric value to [0, 1]."""
+    return max(0.0, min(1.0, value))
