@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: somnus-api
+    env: docker
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /health
+    disk:
+      name: somnus-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: SOMNUS_DB_PATH
+        value: /var/data/somnus.db
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_BASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
