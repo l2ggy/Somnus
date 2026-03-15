@@ -22,10 +22,16 @@ Workload was divided as follows:
 - Nicole: Product & submission lead -- presentation, demo video, design concept, documentation
 
 **Boris**
-- blah blah blah, name specific GitHub folders/files if possible
+- Led Sleep Intelligence + Personalization implementation across `app/agents/intelligence/` (sensor interpretation, sleep-state inference, disturbance detection, intervention selection, pre-sleep strategy, and morning reflection)
+- Built and tuned the core decision pipeline for real-time night monitoring using `sensor_interpreter.py`, `sleep_state.py`, `disturbance.py`, and `intervention.py`
+- Implemented personalization logic in `strategist.py` and `journal_reflection.py`, connecting nightly planning with morning feedback for continuous adaptation
+- Helped define and maintain agent contract boundaries and merge-safety rules for intelligence components via shared-state/contract architecture (`app/pipeline_contracts.py`, `app/models/userstate.py`)
 
 **Jessica**
-- blah blah blah, name specific GitHub folders/files if possible
+- Led Backend + Orchestration development for the FastAPI service in `app/main.py`, including API routes and session lifecycle handling
+- Implemented backend ingestion and validation flow at the API boundary in `app/agents/backend/intake.py` to normalize sensor payloads before processing
+- Built core runtime coordination in `app/orchestrator.py`, including agent sequencing for pre-sleep planning, night ticks, and morning reflection
+- Developed persistence/data-layer infrastructure in `app/store.py` and integrated backend contracts needed for session state management and API reliability
 
 **Nicole**
 - Made canva presentation and directed demo video
