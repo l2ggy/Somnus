@@ -19,6 +19,7 @@ Demo/example endpoints (stateless, no session store):
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import orchestrator, store
 from app.pipeline_contracts import agent_registry
@@ -43,6 +44,14 @@ app = FastAPI(
     description="Agentic sleep assistant — shared-state backend",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ---------------------------------------------------------------------------

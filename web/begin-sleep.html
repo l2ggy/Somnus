@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Somnus | Begin Sleep</title>
+    <link rel="stylesheet" href="/styles/base.css" />
+    <link rel="stylesheet" href="/styles/menu.css" />
+  </head>
+  <body>
+    <main class="menu-screen" aria-label="Begin Sleep screen">
+      <img class="menu-screen__background" src="/assets/BackgroundPortrait.svg" alt="" aria-hidden="true" />
+      <section class="menu-screen__content" aria-label="Begin Sleep">
+        <header class="menu-screen__header anim-pop-in" style="--anim-delay: 120ms">
+          <div class="menu-screen__header-top">
+            <img class="menu-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="286" height="88" />
+            <a class="menu-screen__menu-link" href="/menu.html">← Menu</a>
+          </div>
+          <div class="menu-screen__divider" aria-hidden="true"></div>
+        </header>
+
+        <div class="menu-screen__body menu-screen__body--page anim-pop-in" style="--anim-delay: 220ms">
+          <h1 class="menu-screen__title">Begin Sleep</h1>
+
+          <section class="journal-panel begin-sleep-panel" aria-label="Begin sleep setup">
+            <p class="begin-sleep-panel__flow" id="quiz-flow-label">Set wake-up time → Set wake-up audio → Set sleep profile → Begin sleep</p>
+            <div class="begin-sleep-panel__progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25" aria-label="Quiz progress">
+              <div class="begin-sleep-panel__progress-fill" id="quiz-progress-fill"></div>
+            </div>
+
+            <form id="begin-sleep-form" class="begin-sleep-form">
+              <section class="begin-sleep-step" data-step="0">
+                <h2 class="begin-sleep-step__title">Set wake-up time</h2>
+                <p class="begin-sleep-step__hint">Using menu user id: <strong id="active-user-id">not set</strong></p>
+                <div class="begin-sleep-field">
+                  <label for="wake-time">Target wake-up time</label>
+                  <input id="wake-time" name="target_wake_time" type="time" value="07:30" required />
+                </div>
+              </section>
+
+              <section class="begin-sleep-step" data-step="1" hidden>
+                <h2 class="begin-sleep-step__title">Set wake-up audio</h2>
+                <p class="begin-sleep-step__hint">Choose your preferred and disliked sounds.</p>
+
+                <fieldset class="begin-sleep-choices">
+                  <legend>Preferred audio</legend>
+                  <label><input type="checkbox" name="preferred_audio" value="brown_noise" /> Brown noise</label>
+                  <label><input type="checkbox" name="preferred_audio" value="white_noise" /> White noise</label>
+                  <label><input type="checkbox" name="preferred_audio" value="pink_noise" /> Pink noise</label>
+                  <label><input type="checkbox" name="preferred_audio" value="rain" /> Rain</label>
+                  <label><input type="checkbox" name="preferred_audio" value="waves" /> Waves</label>
+                  <label><input type="checkbox" name="preferred_audio" value="breathing_pace" /> Breathing pace</label>
+                </fieldset>
+
+                <fieldset class="begin-sleep-choices">
+                  <legend>Disliked audio</legend>
+                  <label><input type="checkbox" name="disliked_audio" value="brown_noise" /> Brown noise</label>
+                  <label><input type="checkbox" name="disliked_audio" value="white_noise" /> White noise</label>
+                  <label><input type="checkbox" name="disliked_audio" value="pink_noise" /> Pink noise</label>
+                  <label><input type="checkbox" name="disliked_audio" value="rain" /> Rain</label>
+                  <label><input type="checkbox" name="disliked_audio" value="waves" /> Waves</label>
+                  <label><input type="checkbox" name="disliked_audio" value="breathing_pace" /> Breathing pace</label>
+                </fieldset>
+              </section>
+
+              <section class="begin-sleep-step" data-step="2" hidden>
+                <h2 class="begin-sleep-step__title">Set sleep profile</h2>
+
+                <div class="begin-sleep-field">
+                  <label for="sleep-goal">Sleep goal</label>
+                  <select id="sleep-goal" name="sleep_goal">
+                    <option value="deep_sleep_focus">Deep sleep focus</option>
+                    <option value="rem_focus">REM focus</option>
+                    <option value="balanced_sleep" selected>Balanced sleep</option>
+                    <option value="recovery">Recovery</option>
+                    <option value="reduce_awakenings">Reduce awakenings</option>
+                  </select>
+                </div>
+
+                <div class="begin-sleep-field">
+                  <label for="aggressiveness">Intervention aggressiveness</label>
+                  <select id="aggressiveness" name="intervention_aggressiveness">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </section>
+
+              <section class="begin-sleep-step" data-step="3" hidden>
+                <h2 class="begin-sleep-step__title">Ready to begin</h2>
+                <p class="begin-sleep-step__hint">We’ll send these preferences to <code>https://somnus-api.onrender.com/session/start</code>.</p>
+                <pre id="payload-preview" class="begin-sleep-preview"></pre>
+              </section>
+
+              <div class="begin-sleep-actions">
+                <button class="menu-screen__option begin-sleep-btn begin-sleep-btn--secondary" type="button" id="prev-step" disabled>Back</button>
+                <button class="menu-screen__option begin-sleep-btn" type="button" id="next-step">Next</button>
+                <button class="menu-screen__option begin-sleep-btn" type="submit" id="submit-session" hidden>Begin sleep</button>
+              </div>
+
+              <p class="begin-sleep-status" id="session-status" aria-live="polite"></p>
+            </form>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const steps = Array.from(document.querySelectorAll('.begin-sleep-step'));
+      const prevBtn = document.getElementById('prev-step');
+      const nextBtn = document.getElementById('next-step');
+      const submitBtn = document.getElementById('submit-session');
+      const flowLabel = document.getElementById('quiz-flow-label');
+      const progressFill = document.getElementById('quiz-progress-fill');
+      const progressBar = progressFill?.parentElement;
+      const status = document.getElementById('session-status');
+      const payloadPreview = document.getElementById('payload-preview');
+      const form = document.getElementById('begin-sleep-form');
+      const activeUserIdLabel = document.getElementById('active-user-id');
+      const storageKey = 'somnus_demo_user_id';
+      const apiBase = 'https://somnus-api.onrender.com';
+      let currentStep = 0;
+
+      const flowText = [
+        'Set wake-up time → Set wake-up audio → Set sleep profile → Begin sleep',
+        'Set wake-up audio → Set sleep profile → Begin sleep',
+        'Set sleep profile → Begin sleep',
+        'Begin sleep',
+      ];
+
+      function getStoredUserId() {
+        return (localStorage.getItem(storageKey) || '').trim();
+      }
+
+      function collectPayload() {
+        const userId = getStoredUserId();
+        const targetWakeTime = document.getElementById('wake-time').value || '07:30';
+        const preferredAudio = Array.from(document.querySelectorAll('input[name="preferred_audio"]:checked')).map((n) => n.value);
+        const dislikedAudio = Array.from(document.querySelectorAll('input[name="disliked_audio"]:checked')).map((n) => n.value);
+        const sleepGoal = document.getElementById('sleep-goal').value;
+        const interventionAggressiveness = document.getElementById('aggressiveness').value;
+
+        return {
+          user_id: userId,
+          preferences: {
+            goals: [sleepGoal],
+            disliked_audio: dislikedAudio,
+            preferred_audio: preferredAudio,
+            target_wake_time: targetWakeTime,
+            intervention_aggressiveness: interventionAggressiveness,
+          },
+          journal_history: [],
+        };
+      }
+
+      function validateCurrentStep() {
+        if (currentStep !== 0) return true;
+        const wakeTime = document.getElementById('wake-time').value;
+        const userId = getStoredUserId();
+        if (!userId) {
+          status.textContent = 'Please enter a Demo User ID on the Menu page first.';
+          return false;
+        }
+        if (!wakeTime) {
+          status.textContent = 'Please set a wake-up time.';
+          return false;
+        }
+        return true;
+      }
+
+      function renderStep() {
+        const stored = getStoredUserId();
+        if (activeUserIdLabel) activeUserIdLabel.textContent = stored || 'not set';
+
+        steps.forEach((step, i) => {
+          step.hidden = i !== currentStep;
+        });
+
+        const percent = ((currentStep + 1) / steps.length) * 100;
+        progressFill.style.width = `${percent}%`;
+        progressBar?.setAttribute('aria-valuenow', String(Math.round(percent)));
+        flowLabel.textContent = flowText[currentStep] || flowText[flowText.length - 1];
+        prevBtn.disabled = currentStep === 0;
+        nextBtn.hidden = currentStep === steps.length - 1;
+        submitBtn.hidden = currentStep !== steps.length - 1;
+
+        if (currentStep === steps.length - 1 && payloadPreview) {
+          payloadPreview.textContent = JSON.stringify(collectPayload(), null, 2);
+        }
+      }
+
+      prevBtn?.addEventListener('click', () => {
+        status.textContent = '';
+        currentStep = Math.max(0, currentStep - 1);
+        renderStep();
+      });
+
+      nextBtn?.addEventListener('click', () => {
+        if (!validateCurrentStep()) return;
+        status.textContent = '';
+        currentStep = Math.min(steps.length - 1, currentStep + 1);
+        renderStep();
+      });
+
+      form?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = collectPayload();
+
+        if (!payload.user_id) {
+          status.textContent = 'Missing user id. Set Demo User ID on Menu first.';
+          return;
+        }
+
+        status.textContent = 'Starting sleep session...';
+
+        try {
+          const response = await fetch(`${apiBase}/session/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Request failed (${response.status})`);
+          }
+
+          status.textContent = 'Session started successfully.';
+        } catch (error) {
+          const msg = (error && error.message) ? error.message : 'Unknown error';
+          if (/Failed to fetch|Load failed|NetworkError/i.test(msg)) {
+            status.textContent = 'Could not start session due to cross-origin/network restrictions. Ensure API CORS allows your web origin.';
+          } else {
+            status.textContent = `Could not start session (${msg}).`;
+          }
+        }
+      });
+
+      renderStep();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Somnus | Menu</title>
+    <link rel="stylesheet" href="/styles/base.css" />
+    <link rel="stylesheet" href="/styles/menu.css" />
+  </head>
+  <body>
+    <main class="menu-screen" aria-label="Somnus menu screen">
+      <img
+        class="menu-screen__background"
+        src="/assets/BackgroundPortrait.svg"
+        alt=""
+        aria-hidden="true"
+      />
+
+      <section class="menu-screen__content" aria-label="Menu">
+        <header class="menu-screen__header anim-pop-in" style="--anim-delay: 120ms">
+          <div class="menu-screen__header-top">
+            <img class="menu-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="286" height="88" />
+          </div>
+          <div class="menu-screen__divider" aria-hidden="true"></div>
+        </header>
+
+        <div class="menu-screen__body anim-pop-in" style="--anim-delay: 220ms">
+          <p class="menu-screen__question">What brings you here?</p>
+
+          <div class="menu-userid" aria-label="Demo user id">
+            <label for="menu-user-id">Demo User ID</label>
+            <input id="menu-user-id" type="text" placeholder="Enter user id" autocomplete="off" />
+          </div>
+
+          <nav class="menu-screen__options" aria-label="Main options">
+            <a class="menu-screen__option" href="/about-somnus.html">About Somnus</a>
+            <a class="menu-screen__option" href="/sleep-journal.html">My Sleep Journal</a>
+            <a class="menu-screen__option" href="/sleep-stats.html">My Sleep Stats</a>
+            <a class="menu-screen__option" href="/begin-sleep.html">Begin Sleep</a>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const userIdInput = document.getElementById('menu-user-id');
+      const storageKey = 'somnus_demo_user_id';
+
+      if (userIdInput) {
+        const existing = localStorage.getItem(storageKey);
+        if (existing) {
+          userIdInput.value = existing;
+        }
+
+        userIdInput.addEventListener('input', () => {
+          localStorage.setItem(storageKey, userIdInput.value.trim());
+        });
+      }
+    </script>
+  </body>
+</html>
