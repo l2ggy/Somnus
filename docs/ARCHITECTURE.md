@@ -827,7 +827,7 @@ All configuration is via environment variables. Copy `.env` and edit as needed.
 |---|---|---|---|
 | `OPENAI_API_KEY` | For GPT mode | — | API key for the LLM endpoint |
 | `OPENAI_BASE_URL` | No | OpenAI default | Base URL for any OpenAI-compatible server |
-| `OPENAI_MODEL` | No | `gpt-4o-mini` | Model name to use |
+| `OPENAI_MODEL` | No | `gpt-4o-mini` | Model name to use (this project is deployed with `openai/gpt-oss-120b`) |
 | `SOMNUS_DB_PATH` | No | `somnus.db` | Path to SQLite database file |
 
 To use the hackathon GPT-OSS endpoint:
