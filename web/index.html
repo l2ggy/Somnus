@@ -17,7 +17,7 @@
         aria-hidden="true"
       />
 
-      <section class="home-screen__content" aria-label="Welcome">
+      <section class="home-screen__content home-screen__content--intro" aria-label="Welcome" id="intro-screen" tabindex="0" role="button">
         <img
           class="home-screen__logo anim-pop-in"
           style="--anim-delay: 220ms"
@@ -28,9 +28,49 @@
         />
 
         <p class="home-screen__prompt anim-pop-in anim-pulse" style="--anim-delay: 420ms">
-          Tap to start
+          Tap to begin
         </p>
       </section>
+
+      <section class="home-screen__content home-screen__content--menu" aria-label="Menu" id="menu-screen" hidden>
+        <header class="menu-screen__header anim-pop-in" style="--anim-delay: 120ms">
+          <img class="menu-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="286" height="88" />
+          <div class="menu-screen__divider" aria-hidden="true"></div>
+        </header>
+
+        <div class="menu-screen__body anim-pop-in" style="--anim-delay: 220ms">
+          <p class="menu-screen__question">What brings you here?</p>
+
+          <nav class="menu-screen__options" aria-label="Main options">
+            <button type="button" class="menu-screen__option">About Somnus</button>
+            <button type="button" class="menu-screen__option">My Sleep Journal</button>
+            <button type="button" class="menu-screen__option">My Sleep Stats</button>
+            <button type="button" class="menu-screen__option">Begin Sleep</button>
+          </nav>
+        </div>
+      </section>
     </main>
+
+    <script>
+      const introScreen = document.getElementById('intro-screen');
+      const menuScreen = document.getElementById('menu-screen');
+
+      function showMenuScreen() {
+        if (!introScreen || !menuScreen || introScreen.hidden) return;
+        introScreen.hidden = true;
+        menuScreen.hidden = false;
+      }
+
+      if (introScreen) {
+        introScreen.addEventListener('click', showMenuScreen);
+        introScreen.addEventListener('touchstart', showMenuScreen, { passive: true });
+        introScreen.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            showMenuScreen();
+          }
+        });
+      }
+    </script>
   </body>
 </html>
