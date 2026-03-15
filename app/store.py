@@ -54,6 +54,7 @@ def init_db() -> None:
 
     Call once at application startup (see lifespan handler in main.py).
     Safe to call multiple times — CREATE TABLE IF NOT EXISTS is idempotent.
+    Also initialises outer-loop tables (user_policies, night_reports).
     """
     with _conn() as conn:
         conn.execute("""
@@ -65,6 +66,10 @@ def init_db() -> None:
         """)
         conn.commit()
     logger.info("SQLite store initialised at %s", os.path.abspath(DB_PATH))
+
+    # Initialise outer loop tables in the same database file.
+    from app.outer_loop import store as outer_store
+    outer_store.init_db()
 
 
 # ---------------------------------------------------------------------------

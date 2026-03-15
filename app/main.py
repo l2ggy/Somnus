@@ -23,7 +23,10 @@ from fastapi import FastAPI, HTTPException, Query
 from app import orchestrator, store
 from app.pipeline_contracts import agent_registry
 from app.models.api import SensorPayload, StartSessionRequest
+from app.models.outer_loop import MorningFeedback
 from app.models.userstate import JournalEntry, SharedState
+from app.outer_loop import run as outer_loop_run
+from app.outer_loop import store as outer_store
 from app.demo_support.demo_states import (
     deep_sleep_state,
     noisy_light_sleep_state,
@@ -78,7 +81,14 @@ def session_start(
         journal_history=req.journal_history,
     )
     result = orchestrator.run_pre_sleep_planning(state, mode=mode)
-    planned_state = store.create_session(result["state"])
+
+    # Inject outer-loop policy into the plan AFTER the strategist runs.
+    # This re-ranks the intervention order and marks any policy-blocked types
+    # without overwriting the strategist's sleep_goal or bedtime choices.
+    policy = outer_store.load_or_default_policy(req.user_id)
+    planned_state = outer_loop_run.apply_policy_to_state(result["state"], policy)
+
+    store.create_session(planned_state)
     return planned_state
 
 
@@ -141,6 +151,118 @@ def session_journal(
 def list_sessions():
     """List all active session user_ids."""
     return {"sessions": store.list_sessions()}
+
+
+# ---------------------------------------------------------------------------
+# Outer loop routes — cross-night learning layer
+# ---------------------------------------------------------------------------
+
+@app.post("/session/{user_id}/end", tags=["outer_loop"])
+def session_end(
+    user_id: str,
+    feedback: MorningFeedback | None = None,
+    mode: str = Query(default="deterministic", pattern="^(deterministic|gpt)$"),
+):
+    """
+    Finish a sleep session and run the full outer loop pipeline.
+
+    Chains four agents in order:
+      1. NightSummaryAgent       — summarises the session from SharedState
+      2. InterventionReviewAgent — evaluates which interventions helped/hurt
+      3. PolicyUpdateAgent       — updates the persistent per-user policy
+      4. NextNightPlannerAgent   — generates a NightlyPlan for tomorrow
+
+    The user policy and night report are persisted to the database.
+
+    Body (optional): MorningFeedback with rested_score, awakenings_reported,
+                     intervention_helpful, and notes.  All fields are optional —
+                     the outer loop runs correctly with no feedback at all.
+
+    ?mode=deterministic  (default) — all agents use rule-based logic
+    ?mode=gpt            — NightSummaryAgent and InterventionReviewAgent add
+                           LLM-generated narrative/notes; NextNightPlannerAgent
+                           uses GPT for richer plan reasoning
+
+    Returns an OuterLoopReport with all four agent outputs.
+    """
+    state = _require_session(user_id)
+    report = outer_loop_run.run_outer_loop(state, feedback=feedback, mode=mode)
+    return report
+
+
+@app.post("/session/{user_id}/morning-feedback", tags=["outer_loop"])
+def session_morning_feedback(
+    user_id: str,
+    feedback: MorningFeedback,
+    mode: str = Query(default="deterministic", pattern="^(deterministic|gpt)$"),
+):
+    """
+    Submit morning feedback and re-run the outer loop with it.
+
+    Use this endpoint when the user submits their rating after the session has
+    already ended (e.g. they open the app the morning after).  Replaces any
+    previous outer-loop results for the same night.
+
+    This is equivalent to POST /session/{user_id}/end with a feedback body,
+    but is semantically distinct — it implies the session has already closed.
+
+    ?mode=deterministic / ?mode=gpt  — same as /end
+    """
+    state = _require_session(user_id)
+    report = outer_loop_run.run_outer_loop(state, feedback=feedback, mode=mode)
+    return report
+
+
+@app.get("/user/{user_id}/policy", tags=["outer_loop"])
+def get_user_policy(user_id: str):
+    """
+    Fetch the current accumulated UserPolicy for a user.
+
+    Returns a fresh zero-state policy if the user has no history yet.
+    The policy reflects learning accumulated across all completed nights.
+    """
+    from app.outer_loop import store as outer_store
+    policy = outer_store.load_or_default_policy(user_id)
+    return policy
+
+
+@app.get("/user/{user_id}/next-night-plan", tags=["outer_loop"])
+def get_next_night_plan(user_id: str):
+    """
+    Fetch the next-night plan derived from the user's accumulated policy.
+
+    Re-derives the plan from the stored UserPolicy using the current session's
+    preferences.  Returns 404 if the user has no session or no policy history.
+
+    For richer plans use POST /session/start?mode=gpt which runs the full
+    strategist with reflection signals.
+    """
+    from app.outer_loop import store as outer_store
+    from app.outer_loop.next_night_planner_agent import run as plan_deterministic
+    from app.outer_loop.night_summary_agent import _infer_date
+    from app.models.outer_loop import NightSummary
+
+    state = _require_session(user_id)
+    policy = outer_store.load_policy(user_id)
+    if policy is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No outer-loop policy found for '{user_id}'. Run /session/{user_id}/end first.",
+        )
+
+    # Build a minimal stub summary so the planner has context shape
+    stub_summary = NightSummary(
+        user_id=user_id,
+        date=_infer_date(state),
+        total_ticks=0,
+    )
+    plan, mode_used = plan_deterministic(policy, stub_summary, state.preferences)
+    return {
+        "user_id":   user_id,
+        "plan":      plan,
+        "mode_used": mode_used,
+        "policy_notes": policy.policy_notes,
+    }
 
 
 def _require_session(user_id: str) -> SharedState:

@@ -115,6 +115,13 @@ class NightlyPlan(BaseModel):
 
     Captured before the sleep session starts and used by other agents
     throughout the night to stay aligned with the user's goals.
+
+    Outer-loop fields (populated by apply_policy_to_state at session start):
+      blocked_interventions — types suppressed due to poor policy scores from
+                              prior nights.  The intervention agent treats these
+                              identically to disliked_audio but logs the reason.
+      policy_guidance_note  — human-readable summary of what the outer loop
+                              injected, for debugging and display.
     """
     target_bedtime: str = "23:00"
     target_wake_time: str = "07:00"
@@ -124,6 +131,11 @@ class NightlyPlan(BaseModel):
     preferred_intervention_order: List[str] = Field(
         default_factory=lambda: ["brown_noise", "breathing_pace", "rain"]
     )
+    # Outer-loop policy enforcement: types blocked from use tonight.
+    # Set by apply_policy_to_state(); never written by the strategist.
+    blocked_interventions: List[str] = Field(default_factory=list)
+    # Trace of outer-loop guidance applied at session start (empty if no policy).
+    policy_guidance_note: str = ""
 
 
 class SharedState(BaseModel):

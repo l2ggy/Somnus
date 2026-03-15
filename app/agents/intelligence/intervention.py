@@ -17,12 +17,25 @@ Phase-aware selection:
   light → any masking type is acceptable
   awake → wake_ramp if near target wake time; masking otherwise
 
-LLM integration plan: the rationale string will become a structured context
-block fed to the LLM, which will produce a more nuanced natural-language
-explanation and potentially override the type choice with better reasoning.
+Candidate filtering precedence (lowest → highest priority, each layer overrides):
+  1. nightly_plan.preferred_intervention_order  (strategist/GPT guidance)
+  2. preferences.disliked_audio                 (user stated preferences)
+  3. nightly_plan.blocked_interventions         (outer-loop policy — prior night scores)
+  4. _PHASE_BLOCKLIST                           (safety — phase-appropriate constraints)
+
+Outer-loop integration:
+  nightly_plan.blocked_interventions is populated by apply_policy_to_state()
+  at session start when a UserPolicy exists.  Interventions with a cross-night
+  score ≤ -0.50 are placed in this list.  The agent removes them from the
+  candidate pool and records the suppression in the rationale so it is visible
+  in the tick trace.
 """
 
+import logging
+
 from app.models.userstate import SharedState, ActiveIntervention
+
+logger = logging.getLogger(__name__)
 
 
 # Maximum base intensity per aggressiveness level.
@@ -76,12 +89,37 @@ def run(state: SharedState) -> SharedState:
             return state.model_copy(update={"active_intervention": ActiveIntervention()})
         return state
 
-    # Build a candidate list: plan's preferred order, minus disliked types.
+    # Build a candidate list.
+    # Precedence (each layer adds exclusions on top of the previous):
+    #   1. plan.preferred_intervention_order  — strategist ranking
+    #   2. prefs.disliked_audio               — user stated preferences
+    #   3. plan.blocked_interventions         — outer-loop policy (prior night scores)
     disliked = set(prefs.disliked_audio)
-    candidates = [t for t in plan.preferred_intervention_order if t not in disliked]
+    policy_blocked = set(getattr(plan, "blocked_interventions", []))
 
-    # Fall back to safe default if user preferences wiped out all options.
+    candidates = [
+        t for t in plan.preferred_intervention_order
+        if t not in disliked and t not in policy_blocked
+    ]
+
+    # Log when policy blocking actually changed what would have been chosen.
+    if policy_blocked:
+        would_have_been = [t for t in plan.preferred_intervention_order if t not in disliked]
+        suppressed = [t for t in would_have_been if t in policy_blocked]
+        if suppressed:
+            logger.info(
+                "intervention: policy blocked %s for user (outer_loop score ≤ -0.50); "
+                "remaining candidates: %s",
+                suppressed, candidates,
+            )
+
+    # Fall back to safe default if all options were excluded.
     if not candidates:
+        logger.warning(
+            "intervention: all candidates excluded (disliked=%s, policy_blocked=%s); "
+            "falling back to brown_noise",
+            list(disliked), list(policy_blocked),
+        )
         candidates = ["brown_noise"]
 
     previous = state.active_intervention
@@ -124,6 +162,9 @@ def run(state: SharedState) -> SharedState:
     ]
     if safety_notes:
         rationale_parts.append("safety=" + "|".join(safety_notes))
+    # Surface outer-loop policy guidance in the rationale for traceability.
+    if policy_blocked:
+        rationale_parts.append(f"policy_blocked={','.join(sorted(policy_blocked))}")
     rationale_parts.append(f"{_META_PREFIX}type_change_cooldown={cooldown_remaining}")
     rationale = "; ".join(rationale_parts)
 
