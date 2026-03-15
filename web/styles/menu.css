@@ -301,6 +301,79 @@
   font-size: clamp(1rem, 3.5vw, 1.35rem);
 }
 
+
+.sleep-session-screen__telemetry {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  gap: 0.35rem;
+  width: min(100%, 30rem);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.8rem;
+  background: rgba(24, 19, 57, 0.38);
+  padding: 0.85rem 1rem;
+  transition: border-color var(--motion-duration-base) ease, box-shadow var(--motion-duration-base) ease;
+}
+
+.sleep-session-screen__telemetry::before {
+  content: '';
+  position: absolute;
+  inset: -30% -15%;
+  background: radial-gradient(circle at 20% 35%, rgba(96, 203, 255, 0.16), transparent 60%),
+    radial-gradient(circle at 80% 65%, rgba(169, 122, 255, 0.14), transparent 60%);
+  z-index: -1;
+  opacity: 0;
+  transform: scale(1.1);
+  transition: opacity var(--motion-duration-base) ease;
+}
+
+.sleep-session-screen__telemetry--intervening {
+  border-color: rgba(255, 109, 130, 0.72);
+  box-shadow: 0 0 0.8rem rgba(255, 80, 117, 0.42), 0 0 2.1rem rgba(255, 109, 130, 0.24);
+}
+
+.sleep-session-screen__telemetry--intervening::before {
+  opacity: 1;
+  background: radial-gradient(circle at 20% 35%, rgba(255, 110, 130, 0.42), transparent 58%),
+    radial-gradient(circle at 75% 75%, rgba(255, 72, 168, 0.32), transparent 62%),
+    radial-gradient(circle at 70% 15%, rgba(255, 176, 117, 0.28), transparent 58%);
+  animation: intervention-fluid 7s ease-in-out infinite alternate;
+}
+
+.sleep-session-screen__db,
+.sleep-session-screen__db-max,
+.sleep-session-screen__intervention {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: clamp(0.95rem, 3vw, 1.12rem);
+  text-shadow: 0 1px 3px rgba(16, 10, 35, 0.45);
+}
+
+.sleep-session-screen__intervention {
+  color: rgba(206, 241, 255, 0.97);
+  font-weight: 600;
+}
+
+.sleep-session-screen__telemetry--intervening .sleep-session-screen__intervention {
+  color: rgba(255, 240, 214, 0.98);
+}
+
+@keyframes intervention-fluid {
+  0% {
+    transform: translate3d(-2%, -2%, 0) scale(1.05);
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    transform: translate3d(4%, 2%, 0) scale(1.16);
+    filter: hue-rotate(-8deg);
+  }
+  100% {
+    transform: translate3d(-1%, 4%, 0) scale(1.1);
+    filter: hue-rotate(10deg);
+  }
+}
+
 .sleep-session-screen__cancel {
   margin-top: 0.45rem;
   border: 0;
