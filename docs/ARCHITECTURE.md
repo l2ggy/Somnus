@@ -45,7 +45,6 @@ Somnus/
 │   │   │   ├── intervention.py  Intervention selector
 │   │   │   ├── strategist.py    Pre-sleep planner (deterministic + GPT)
 │   │   │   └── journal_reflection.py  Morning reflection (deterministic + GPT)
-│   │   └── *.py wrappers         Backward-compatible import aliases
 │   └── demo_support/
 │       └── demo_states.py       Demo/user-flow fixtures for UI endpoints
 ├── docs/
@@ -224,7 +223,7 @@ Every agent file exports at minimum one function: `run(state: SharedState) -> Sh
 
 ### intake
 
-**File:** `app/agents/intake.py`
+**File:** `app/agents/backend/intake.py`
 **Lifecycle:** on sensor arrival (before the tick)
 **Reads:** raw dict from HTTP request
 **Writes:** `latest_sensor`
@@ -242,7 +241,7 @@ state = intake.run(state, {
 
 ### sensor_interpreter
 
-**File:** `app/agents/sensor_interpreter.py`
+**File:** `app/agents/intelligence/sensor_interpreter.py`
 **Lifecycle:** tick step 1
 **Reads:** `latest_sensor`
 **Writes:** appends to `hypotheses`
@@ -264,7 +263,7 @@ Thresholds are based on published sleep-research norms and can be tuned per-user
 
 ### sleep_state
 
-**File:** `app/agents/sleep_state.py`
+**File:** `app/agents/intelligence/sleep_state.py`
 **Lifecycle:** tick step 2
 **Reads:** `latest_sensor`
 **Writes:** `sleep_state`
@@ -295,7 +294,7 @@ Real examples from the running system:
 
 ### disturbance
 
-**File:** `app/agents/disturbance.py`
+**File:** `app/agents/intelligence/disturbance.py`
 **Lifecycle:** tick step 3
 **Reads:** `latest_sensor`, `sleep_state.phase`
 **Writes:** `sleep_state.disturbance_reason`, `sleep_state.wake_risk`
@@ -325,7 +324,7 @@ Risk bumps scale proportionally to severity (e.g. 80 dB noise = larger bump than
 
 ### intervention
 
-**File:** `app/agents/intervention.py`
+**File:** `app/agents/intelligence/intervention.py`
 **Lifecycle:** tick step 4
 **Reads:** `sleep_state`, `nightly_plan`, `preferences`
 **Writes:** `active_intervention`
@@ -356,7 +355,7 @@ Base intensity by aggressiveness setting:
 
 ### strategist
 
-**File:** `app/agents/strategist.py`
+**File:** `app/agents/intelligence/strategist.py`
 **Lifecycle:** pre-sleep (once per night)
 **Reads:** `preferences`, `journal_history`
 **Writes:** `nightly_plan`
@@ -385,7 +384,7 @@ GPT system prompt rules (enforced in prompt, validated in code):
 
 ### journal_reflection
 
-**File:** `app/agents/journal_reflection.py`
+**File:** `app/agents/intelligence/journal_reflection.py`
 **Lifecycle:** morning (once per night)
 **Reads:** `journal_history`, `active_intervention`, `hypotheses`
 **Writes:** appends to `journal_history`, appends to `hypotheses`
