@@ -90,7 +90,7 @@
               <section class="begin-sleep-step" data-step="3" hidden>
                 <h2 class="begin-sleep-step__title">Ready to begin</h2>
                 <p class="begin-sleep-step__hint">We’ll send these preferences to <code>/api/session/start</code>.</p>
-                <pre id="payload-preview" class="begin-sleep-preview"></pre>
+                <div id="payload-preview" class="begin-sleep-preview" aria-live="polite"></div>
               </section>
 
               <div class="begin-sleep-actions">
@@ -256,6 +256,54 @@
         const period = hour >= 12 ? 'PM' : 'AM';
         const normalizedHour = hour % 12 || 12;
         return `${normalizedHour}:${String(minute).padStart(2, '0')} ${period}`;
+      }
+
+      function formatPreferenceName(value) {
+        return String(value || '')
+          .split('_')
+          .filter(Boolean)
+          .map((part) => part[0].toUpperCase() + part.slice(1))
+          .join(' ');
+      }
+
+      function renderPreferenceChips(values) {
+        if (!Array.isArray(values) || values.length === 0) {
+          return '<span class="begin-sleep-preview__empty">None selected</span>';
+        }
+
+        return values
+          .map((item) => `<li class="begin-sleep-preview__chip">${formatPreferenceName(item)}</li>`)
+          .join('');
+      }
+
+      function renderPayloadPreview(payload) {
+        if (!payloadPreview) return;
+
+        const preferences = payload?.preferences || {};
+        const goal = formatPreferenceName(preferences.goals?.[0] || '');
+        const wakeTime = formatWakeTime(preferences.target_wake_time);
+        const aggressiveness = formatPreferenceName(preferences.intervention_aggressiveness);
+        const preferredAudio = renderPreferenceChips(preferences.preferred_audio);
+        const dislikedAudio = renderPreferenceChips(preferences.disliked_audio);
+
+        payloadPreview.innerHTML = `
+          <div class="begin-sleep-preview__grid">
+            <p><span>Demo user</span><strong>${payload.user_id || 'Not set'}</strong></p>
+            <p><span>Wake-up time</span><strong>${wakeTime}</strong></p>
+            <p><span>Sleep goal</span><strong>${goal || 'Not set'}</strong></p>
+            <p><span>Aggressiveness</span><strong>${aggressiveness || 'Not set'}</strong></p>
+          </div>
+          <div class="begin-sleep-preview__lists">
+            <section>
+              <h3>Preferred audio</h3>
+              <ul>${preferredAudio}</ul>
+            </section>
+            <section>
+              <h3>Disliked audio</h3>
+              <ul>${dislikedAudio}</ul>
+            </section>
+          </div>
+        `;
       }
 
       function setExperienceState(state) {
@@ -500,7 +548,7 @@
         submitBtn.hidden = currentStep !== steps.length - 1;
 
         if (currentStep === steps.length - 1 && payloadPreview) {
-          payloadPreview.textContent = JSON.stringify(collectPayload(), null, 2);
+          renderPayloadPreview(collectPayload());
         }
       }
 
