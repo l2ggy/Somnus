@@ -1,0 +1,5 @@
+text_type, colour, alt_colour, font, formatting, size_ref, notes
+Logo, #ffffff, none, RoxboroughCF, bold, 152, smaller size for title strip
+Header, #ffffff, none,Body Grotesque, bold, 88, italics when appropriate 
+Subheader, #ffffff, none,Body Grotesque, bold, 34, italics when appropriate 
+Body, #ffffff, #a29fb8, Body Grotesque, regular, 32, italics/bold/underline when appropriate 
