@@ -44,7 +44,11 @@ FEATURE_COLS = [
     "hr_mean",
     "hr_std",
     "steps_sum",
+    "prev_motion_mean",
 ]
+
+# Categorical column encoded via get_dummies before training
+CATEGORICAL_COLS = ["prev_stage"]
 TARGET_COL = "sleep_stage"
 
 # Canonical label order (preserved in encoder for deterministic class indices)
@@ -61,7 +65,7 @@ def load_dataset(path: Path = DATA_PATH) -> pd.DataFrame:
     """Load the feature CSV and drop rows with any NaN in feature or target columns."""
     df = pd.read_csv(path)
     before = len(df)
-    df = df.dropna(subset=FEATURE_COLS + [TARGET_COL])
+    df = df.dropna(subset=FEATURE_COLS + CATEGORICAL_COLS + [TARGET_COL])
     dropped = before - len(df)
     if dropped:
         logger.info("Dropped %d rows with missing values (%.1f%%)", dropped, 100 * dropped / before)
@@ -84,13 +88,17 @@ def encode_labels(y: pd.Series) -> tuple[np.ndarray, LabelEncoder]:
 def train(df: pd.DataFrame) -> tuple[RandomForestClassifier, LabelEncoder, dict]:
     """Full train/eval pipeline.
 
+    prev_stage is one-hot encoded via get_dummies() and concatenated with the
+    numeric feature columns before training.
+
     Args:
         df: Feature DataFrame from load_dataset().
 
     Returns:
         Tuple of (fitted model, label encoder, metrics dict).
     """
-    X = df[FEATURE_COLS].to_numpy()
+    stage_dummies = pd.get_dummies(df["prev_stage"], prefix="prev_stage")
+    X = pd.concat([df[FEATURE_COLS], stage_dummies], axis=1).to_numpy()
     y_raw = df[TARGET_COL]
     y, le = encode_labels(y_raw)
 

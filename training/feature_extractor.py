@@ -107,18 +107,34 @@ def extract_motion_features(df_motion: pd.DataFrame) -> dict:
 def extract_hr_features(df_hr: pd.DataFrame) -> dict:
     """Compute heart-rate summary features from a single window.
 
+    RR intervals (ms) are derived from HR (bpm) via RR = 60 / HR.
+    RMSSD and SDNN require at least 2 samples; otherwise they are set to 0.
+
     Args:
         df_hr: DataFrame with column hr (bpm values).
 
     Returns:
-        Dict with hr_mean, hr_std.
+        Dict with hr_mean, hr_std, hr_rmssd, hr_sdnn.
     """
     if df_hr.empty:
-        return {"hr_mean": np.nan, "hr_std": np.nan}
+        return {"hr_mean": np.nan, "hr_std": np.nan, "hr_rmssd": 0.0, "hr_sdnn": 0.0}
+
+    hr = df_hr["hr"].to_numpy(dtype=float)
+    rr = 60.0 / hr  # RR intervals in seconds
+
+    if len(rr) >= 2:
+        rr_diff = np.diff(rr)
+        hr_rmssd = float(np.sqrt(np.mean(rr_diff ** 2)))
+        hr_sdnn = float(np.std(rr, ddof=0))
+    else:
+        hr_rmssd = 0.0
+        hr_sdnn = 0.0
 
     return {
-        "hr_mean": float(df_hr["hr"].mean()),
-        "hr_std": float(df_hr["hr"].std(ddof=0)),
+        "hr_mean": float(hr.mean()),
+        "hr_std": float(hr.std(ddof=0)),
+        "hr_rmssd": hr_rmssd,
+        "hr_sdnn": hr_sdnn,
     }
 
 
@@ -165,6 +181,10 @@ def build_feature_windows(subject_record: SubjectRecord, subject_id: str) -> lis
 
     rows: list[dict] = []
 
+    # Temporal context — seeded with defaults for the first window
+    prev_stage: str = "unknown"
+    prev_motion_mean: float = 0.0
+
     for _, label_row in df_labels.iterrows():
         win_start = float(label_row["t"])
         win_end = win_start + WINDOW_SECONDS
@@ -172,7 +192,7 @@ def build_feature_windows(subject_record: SubjectRecord, subject_id: str) -> lis
         sleep_stage = _STAGE_MAP.get(stage_int)
 
         if sleep_stage is None:
-            # Unknown stage code — skip
+            # Unknown stage code — skip without updating prev context
             continue
 
         # Slice each signal to the window
@@ -184,15 +204,23 @@ def build_feature_windows(subject_record: SubjectRecord, subject_id: str) -> lis
         if motion_win.empty and hr_win.empty:
             continue
 
+        motion_feats = extract_motion_features(motion_win)
+
         row = {
             "subject_id": subject_id,
             "timestamp": win_start,
-            **extract_motion_features(motion_win),
+            **motion_feats,
             **extract_hr_features(hr_win),
             **extract_step_features(steps_win),
+            "prev_stage": prev_stage,
+            "prev_motion_mean": prev_motion_mean,
             "sleep_stage": sleep_stage,
         }
         rows.append(row)
+
+        # Advance temporal context for the next window
+        prev_stage = sleep_stage
+        prev_motion_mean = motion_feats.get("motion_mean") or 0.0
 
     return rows
 
