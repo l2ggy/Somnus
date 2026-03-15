@@ -18,11 +18,13 @@
   object-fit: cover;
   object-position: center;
   z-index: 0;
-  transition: filter 240ms ease, transform 240ms ease, opacity 240ms ease;
+  opacity: 0;
+  animation: fade-in var(--motion-duration-slower) ease-out forwards;
+  transition: filter 300ms ease, transform 300ms ease, opacity 300ms ease;
 }
 
 .menu-screen__content {
-  transition: opacity 180ms ease;
+  transition: opacity 260ms ease, transform 300ms ease;
 
   position: relative;
   z-index: 1;
@@ -131,6 +133,7 @@
 }
 
 .menu-screen__option {
+  box-shadow: 0 0 0 rgba(255, 255, 255, 0);
   width: 100%;
   border: 2px solid rgba(255, 255, 255, 0.72);
   border-radius: 999px;
@@ -141,7 +144,7 @@
   line-height: 1.2;
   padding: clamp(0.8rem, 2.8vw, 1.05rem) 1.25rem;
   cursor: pointer;
-  transition: background-color 180ms ease, border-color 180ms ease;
+  transition: transform 220ms var(--motion-ease-pop), background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
   text-decoration: none;
   text-align: center;
 }
@@ -150,6 +153,7 @@
 .menu-screen__option:focus-visible {
   background-color: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 24px rgba(16, 9, 45, 0.24);
 }
 
 .menu-screen__option:focus-visible {
@@ -333,6 +337,144 @@
   pointer-events: none;
 }
 
+
+.post-sleep-screen,
+.journal-quiz-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+}
+
+.post-sleep-card,
+.journal-quiz-shell {
+  width: min(100%, 44rem);
+  border: 1.5px solid rgba(255, 255, 255, 0.62);
+  border-radius: 1.5rem;
+  background: rgba(53, 44, 108, 0.22);
+  backdrop-filter: blur(2px);
+  padding: clamp(1.1rem, 4vw, 1.8rem);
+  animation: pop-in var(--motion-duration-base) var(--motion-ease-pop) both;
+}
+
+.post-sleep-card__heading {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.5rem, 4.5vw, 2.2rem);
+  font-weight: 500;
+}
+
+.post-sleep-card__copy {
+  margin: 1rem 0 0;
+  text-align: center;
+  line-height: 1.4;
+  font-size: clamp(1.05rem, 3.7vw, 1.45rem);
+}
+
+.post-sleep-card__actions {
+  margin-top: 1.2rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.journal-quiz-shell__title {
+  margin: 0 0 0.9rem;
+  font-size: clamp(1.4rem, 4.5vw, 2rem);
+}
+
+.journal-quiz-form {
+  margin-top: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.journal-quiz-step {
+  border: 1.5px solid rgba(255, 255, 255, 0.62);
+  border-radius: 1.1rem;
+  padding: clamp(1rem, 3vw, 1.35rem);
+}
+
+.journal-quiz-options {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.journal-choice {
+  border: 1.5px solid rgba(255, 255, 255, 0.76);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-white);
+  font: inherit;
+  padding: 0.58rem 1rem;
+  cursor: pointer;
+}
+
+.journal-choice:hover,
+.journal-choice:focus-visible,
+.journal-choice.is-selected {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+.journal-notes {
+  width: 100%;
+  margin-top: 0.8rem;
+  min-height: 5.5rem;
+  border-radius: 0.85rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.62);
+  background: rgba(24, 15, 70, 0.3);
+  color: var(--color-white);
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+}
+
+.sleep-session-screen__action {
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-white);
+  padding: 0.55rem 1.15rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sleep-ended-active .menu-screen__background,
+.journal-quiz-active .menu-screen__background {
+  filter: brightness(0.52) blur(1px);
+  transform: scale(1.02);
+}
+
+.sleep-ended-active .menu-screen::after,
+.journal-quiz-active .menu-screen::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(80, 77, 140, 0.28), rgba(18, 12, 48, 0.62));
+}
+
+.sleep-ended-active #begin-sleep-content,
+.journal-quiz-active #begin-sleep-content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+
+.screen-fade {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms ease, transform 300ms var(--motion-ease-pop);
+}
+
+.screen-fade[hidden] {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
 
 .begin-sleep-panel {
   min-height: auto;
