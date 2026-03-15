@@ -17,7 +17,7 @@
         aria-hidden="true"
       />
 
-      <section class="home-screen__content" aria-label="Welcome">
+      <section class="home-screen__content home-screen__content--intro" aria-label="Welcome" id="intro-screen" tabindex="0" role="button">
         <img
           class="home-screen__logo anim-pop-in"
           style="--anim-delay: 220ms"
@@ -28,9 +28,28 @@
         />
 
         <p class="home-screen__prompt anim-pop-in anim-pulse" style="--anim-delay: 420ms">
-          Tap to start
+          Tap to begin
         </p>
       </section>
     </main>
+
+    <script>
+      const introScreen = document.getElementById('intro-screen');
+
+      function goToMenuScreen() {
+        window.location.href = '/menu.html';
+      }
+
+      if (introScreen) {
+        introScreen.addEventListener('click', goToMenuScreen);
+        introScreen.addEventListener('touchstart', goToMenuScreen, { passive: true });
+        introScreen.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            goToMenuScreen();
+          }
+        });
+      }
+    </script>
   </body>
 </html>
