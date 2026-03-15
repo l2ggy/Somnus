@@ -89,8 +89,8 @@
 
               <section class="begin-sleep-step" data-step="3" hidden>
                 <h2 class="begin-sleep-step__title">Ready to begin</h2>
-                <p class="begin-sleep-step__hint">We’ll send these preferences to <code>/api/session/start</code>.</p>
-                <pre id="payload-preview" class="begin-sleep-preview"></pre>
+                <p class="begin-sleep-step__hint">Review your settings before starting sleep.</p>
+                <div id="payload-preview" class="begin-sleep-preview" aria-live="polite"></div>
               </section>
 
               <div class="begin-sleep-actions">
@@ -468,6 +468,32 @@
         };
       }
 
+      function formatListForSummary(values) {
+        if (!Array.isArray(values) || values.length === 0) return 'None selected';
+        return values
+          .map((value) => formatInterventionName(value))
+          .join(', ');
+      }
+
+      function formatPreferenceSummary(payload) {
+        const preferences = payload?.preferences || {};
+        const wakeTime = formatWakeTime(preferences.target_wake_time);
+        const sleepGoal = formatInterventionName(preferences.goals?.[0] || 'balanced_sleep');
+        const aggressiveness = formatInterventionName(preferences.intervention_aggressiveness || 'medium');
+        const preferredAudio = formatListForSummary(preferences.preferred_audio);
+        const dislikedAudio = formatListForSummary(preferences.disliked_audio);
+
+        return `
+          <div class="begin-sleep-summary-grid">
+            <p class="begin-sleep-summary-item"><span class="begin-sleep-summary-label">Wake-up time</span><span class="begin-sleep-summary-value">${wakeTime}</span></p>
+            <p class="begin-sleep-summary-item"><span class="begin-sleep-summary-label">Sleep goal</span><span class="begin-sleep-summary-value">${sleepGoal}</span></p>
+            <p class="begin-sleep-summary-item"><span class="begin-sleep-summary-label">Intervention level</span><span class="begin-sleep-summary-value">${aggressiveness}</span></p>
+            <p class="begin-sleep-summary-item"><span class="begin-sleep-summary-label">Preferred audio</span><span class="begin-sleep-summary-value">${preferredAudio}</span></p>
+            <p class="begin-sleep-summary-item"><span class="begin-sleep-summary-label">Disliked audio</span><span class="begin-sleep-summary-value">${dislikedAudio}</span></p>
+          </div>
+        `;
+      }
+
       function validateCurrentStep() {
         if (currentStep !== 0) return true;
         const wakeTime = document.getElementById('wake-time').value;
@@ -500,7 +526,7 @@
         submitBtn.hidden = currentStep !== steps.length - 1;
 
         if (currentStep === steps.length - 1 && payloadPreview) {
-          payloadPreview.textContent = JSON.stringify(collectPayload(), null, 2);
+          payloadPreview.innerHTML = formatPreferenceSummary(collectPayload());
         }
       }
 

@@ -699,12 +699,36 @@
   margin: 0;
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 0.8rem;
-  padding: 0.75rem;
-  max-height: 15rem;
-  overflow: auto;
-  font-size: 0.85rem;
+  padding: 0.9rem;
   color: rgba(255, 255, 255, 0.95);
   background: rgba(39, 22, 105, 0.22);
+}
+
+.begin-sleep-summary-grid {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.begin-sleep-summary-item {
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.65rem;
+  padding: 0.62rem 0.72rem;
+  display: grid;
+  gap: 0.2rem;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.begin-sleep-summary-label {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.begin-sleep-summary-value {
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .begin-sleep-actions {
