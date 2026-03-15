@@ -259,6 +259,14 @@ def _sensor_interpreter_summary(state: SharedState) -> dict:
             continue
 
         signal_hypotheses = h.get("signal_hypotheses", [])
+        ranked_signals = sorted(
+            [
+                sh for sh in signal_hypotheses
+                if sh.get("severity") is not None
+            ],
+            key=lambda sh: sh.get("severity", 0),
+            reverse=True,
+        )
         return {
             "tick_timestamp": h.get("timestamp"),
             "tick_source": h.get("tick_source"),
@@ -270,6 +278,14 @@ def _sensor_interpreter_summary(state: SharedState) -> dict:
                     "label": sh.get("label"),
                 }
                 for sh in signal_hypotheses
+            ],
+            "top_signal_severities": [
+                {
+                    "signal": sh.get("signal"),
+                    "severity": sh.get("severity"),
+                    "label": sh.get("label"),
+                }
+                for sh in ranked_signals[:3]
             ],
         }
     return {}
@@ -284,19 +300,85 @@ def _sleep_state_summary(state: SharedState) -> dict:
 
 
 def _disturbance_summary(state: SharedState) -> dict:
-    return {
+    summary = {
         "disturbance_reason": state.sleep_state.disturbance_reason,
         "wake_risk":          state.sleep_state.wake_risk,
     }
 
+    for h in reversed(state.hypotheses):
+        if h.get("source") != "disturbance":
+            continue
+
+        contributors = h.get("contributors") or []
+        if contributors:
+            ranked = sorted(
+                contributors,
+                key=lambda c: c.get("risk_bump", 0),
+                reverse=True,
+            )
+            summary["contributor_breakdown"] = [
+                {
+                    "kind": c.get("kind"),
+                    "severity": c.get("severity"),
+                    "risk_bump": c.get("risk_bump"),
+                }
+                for c in ranked[:3]
+            ]
+        break
+
+    return summary
+
 
 def _intervention_summary(state: SharedState) -> dict:
     iv = state.active_intervention
-    return {
+    safety_decisions = _extract_intervention_safety_decisions(iv.rationale)
+    summary = {
         "type":      iv.type,
         "intensity": iv.intensity,
         "rationale": iv.rationale,
     }
+    if safety_decisions:
+        summary["safety_decisions"] = safety_decisions
+    return summary
+
+
+def _extract_intervention_safety_decisions(rationale: str | None) -> dict:
+    """Extract compact safety-control decisions from intervention rationale."""
+    if not rationale:
+        return {}
+
+    safety_tokens: list[str] = []
+    cooldown_remaining: int | None = None
+    for part in [p.strip() for p in rationale.split(";")]:
+        if part.startswith("safety="):
+            payload = part.split("=", 1)[1]
+            safety_tokens.extend(token for token in payload.split("|") if token)
+        elif part.startswith("meta:type_change_cooldown="):
+            _, _, raw = part.partition("=")
+            try:
+                cooldown_remaining = int(raw)
+            except ValueError:
+                cooldown_remaining = None
+
+    if not safety_tokens and cooldown_remaining is None:
+        return {}
+
+    decisions: dict[str, object] = {}
+    cooldown_actions = [s for s in safety_tokens if "cooldown" in s]
+    ramp_actions = [s for s in safety_tokens if "ramp" in s]
+    cap_actions = [s for s in safety_tokens if "cap" in s]
+
+    if cooldown_actions or cooldown_remaining is not None:
+        decisions["cooldown"] = {
+            "actions": cooldown_actions,
+            "remaining_ticks": cooldown_remaining,
+        }
+    if ramp_actions:
+        decisions["ramp"] = ramp_actions
+    if cap_actions:
+        decisions["cap"] = cap_actions
+
+    return decisions
 
 
 def _extract_reflection(state: SharedState) -> dict:
