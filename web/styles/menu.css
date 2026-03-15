@@ -301,6 +301,83 @@
   font-size: clamp(1rem, 3.5vw, 1.35rem);
 }
 
+
+.sleep-session-screen__telemetry {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  gap: 0.35rem;
+  width: min(100%, 30rem);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.95rem;
+  background: rgba(24, 19, 57, 0.36);
+  padding: 0.9rem 1rem;
+  transition: border-color 260ms ease, box-shadow 260ms ease, transform 260ms ease;
+}
+
+.sleep-session-screen__telemetry::before,
+.sleep-session-screen__telemetry::after {
+  content: '';
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 280ms ease;
+}
+
+.sleep-session-screen__telemetry::before {
+  background:
+    radial-gradient(circle at 25% 35%, rgba(255, 112, 156, 0.5), transparent 45%),
+    radial-gradient(circle at 70% 60%, rgba(120, 207, 255, 0.45), transparent 52%);
+  filter: blur(20px) saturate(120%);
+}
+
+.sleep-session-screen__telemetry::after {
+  background:
+    linear-gradient(120deg, rgba(255, 99, 132, 0.18), rgba(255, 176, 111, 0.15), rgba(121, 242, 255, 0.18));
+  mix-blend-mode: screen;
+}
+
+.sleep-session-screen__telemetry.is-intervening {
+  border-color: rgba(255, 156, 164, 0.72);
+  box-shadow: 0 0 0.65rem rgba(255, 130, 168, 0.4), 0 0 1.4rem rgba(104, 198, 255, 0.35);
+  transform: translateY(-2px);
+}
+
+.sleep-session-screen__telemetry.is-intervening::before,
+.sleep-session-screen__telemetry.is-intervening::after {
+  opacity: 1;
+  animation: intervention-fluid-shift 5.6s ease-in-out infinite alternate;
+}
+
+.sleep-session-screen__db,
+.sleep-session-screen__db-max,
+.sleep-session-screen__intervention {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: clamp(0.95rem, 3vw, 1.12rem);
+}
+
+.sleep-session-screen__intervention {
+  color: rgba(194, 238, 255, 0.95);
+  font-weight: 600;
+}
+
+
+@keyframes intervention-fluid-shift {
+  0% {
+    transform: translate3d(-4%, -2%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, 3%, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(-2%, 5%, 0) scale(1.02);
+  }
+}
+
 .sleep-session-screen__cancel {
   margin-top: 0.45rem;
   border: 0;
