@@ -1,0 +1,5 @@
+text_type, colour, font, formatting, size
+Logo, #ffffff, RoxboroughCF, bold, 152
+Header, #ffffff, Body Grotesque, bold, 88
+Subtitle, #ffffff, Body Grotesque, bold, 34
+Body, #ffffff, Body Grotesque, regular, 32
