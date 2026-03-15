@@ -17,10 +17,26 @@
   height: 100dvh;
   object-fit: cover;
   object-position: center;
+  filter: brightness(0.58) saturate(0.9);
+  transform: scale(1.03);
+  opacity: 0;
+  animation: fade-in var(--motion-duration-slower) ease-out forwards;
   z-index: 0;
 }
 
-.home-screen__content {
+
+.home-screen::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 7, 36, 0.34) 0%, rgba(14, 8, 42, 0.52) 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+ .home-screen__content {
+  animation: pop-in var(--motion-duration-slow) var(--motion-ease-pop) both;
+
   position: relative;
   z-index: 1;
   min-height: 100vh;
