@@ -13,11 +13,143 @@ produced here will be included in the prompt context so the model understands
 the physiological situation in natural-language terms.
 """
 
+from copy import deepcopy
+from functools import lru_cache
+
 from app.models.userstate import SharedState, SensorSnapshot
 
 
 SENSOR_SOURCE = "sensor_interpreter"
 TICK_SOURCE_MARKER = "night_tick.latest_sensor"
+
+
+# Centralized signal model configuration. Threshold cutoffs and severity
+# mappings live here so feature extraction and hypothesis generation stay aligned.
+BASE_SIGNAL_PROFILE = {
+    "features": {
+        "hr_status": {
+            "sensor_attr": "heart_rate",
+            "unknown_label": "unknown",
+            "ranges": [
+                {"label": "very_low", "max": 50, "max_inclusive": False},
+                {"label": "low_resting", "max": 60, "max_inclusive": False},
+                {"label": "normal", "max": 80, "max_inclusive": True},
+                {"label": "mildly_elevated", "max": 90, "max_inclusive": True},
+                {"label": "elevated", "max": None},
+            ],
+            "severity_by_label": {
+                "unknown": 0.0,
+                "very_low": 0.65,
+                "low_resting": 0.2,
+                "normal": 0.1,
+                "mildly_elevated": 0.6,
+                "elevated": 0.9,
+            },
+        },
+        "hrv_quality": {
+            "sensor_attr": "hrv",
+            "unknown_label": "unknown",
+            "ranges": [
+                {"label": "excellent", "min": 70},
+                {"label": "good", "min": 50, "max": 70, "max_inclusive": False},
+                {"label": "moderate", "min": 30, "max": 50, "max_inclusive": False},
+                {"label": "low", "max": 30, "max_inclusive": False},
+            ],
+            "severity_by_label": {
+                "unknown": 0.0,
+                "excellent": 0.1,
+                "good": 0.2,
+                "moderate": 0.45,
+                "low": 0.8,
+            },
+        },
+        "movement_level": {
+            "sensor_attr": "movement",
+            "unknown_label": "unknown",
+            "ranges": [
+                {"label": "still", "max": 0.05, "max_inclusive": False},
+                {"label": "minimal", "max": 0.25, "max_inclusive": False},
+                {"label": "restless", "max": 0.55, "max_inclusive": False},
+                {"label": "active", "max": None},
+            ],
+            "severity_by_label": {
+                "unknown": 0.0,
+                "still": 0.05,
+                "minimal": 0.2,
+                "restless": 0.65,
+                "active": 0.95,
+            },
+        },
+        "noise_alert": {
+            "sensor_attr": "noise_db",
+            "unknown_label": "unknown",
+            "ranges": [
+                {"label": "quiet", "max": 40, "max_inclusive": False},
+                {"label": "moderate", "max": 55, "max_inclusive": False},
+                {"label": "loud", "max": 65, "max_inclusive": False},
+                {"label": "very_loud", "max": None},
+            ],
+            "severity_by_label": {
+                "unknown": 0.0,
+                "quiet": 0.05,
+                "moderate": 0.35,
+                "loud": 0.75,
+                "very_loud": 1.0,
+            },
+        },
+        "light_status": {
+            "sensor_attr": "light_level",
+            "unknown_label": "unknown",
+            "ranges": [
+                {"label": "dark", "max": 0.05, "max_inclusive": False},
+                {"label": "dim", "max": 0.25, "max_inclusive": False},
+                {"label": "moderate", "max": 0.6, "max_inclusive": False},
+                {"label": "bright", "max": None},
+            ],
+            "severity_by_label": {
+                "unknown": 0.0,
+                "dark": 0.05,
+                "dim": 0.2,
+                "moderate": 0.55,
+                "bright": 0.9,
+            },
+        },
+        "breathing_status": {
+            "sensor_attr": "breathing_rate",
+            "unknown_label": "unknown",
+            "ranges": [
+                {"label": "very_slow", "max": 10, "max_inclusive": False},
+                {"label": "normal", "max": 16, "max_inclusive": True},
+                {"label": "slightly_elevated", "max": 20, "max_inclusive": True},
+                {"label": "elevated", "max": None},
+            ],
+            "severity_by_label": {
+                "unknown": 0.0,
+                "very_slow": 0.8,
+                "normal": 0.1,
+                "slightly_elevated": 0.55,
+                "elevated": 0.9,
+            },
+        },
+    },
+    "hypothesis_signals": [
+        {"signal": "noise_alert", "feature": "noise_alert"},
+        {"signal": "movement_spike", "feature": "movement_level"},
+        {"signal": "hr_elevated", "feature": "hr_status"},
+        {"signal": "hrv_recovery", "feature": "hrv_quality"},
+        {"signal": "light_exposure", "feature": "light_status"},
+        {"signal": "breathing_irregularity", "feature": "breathing_status"},
+    ],
+}
+
+# Hook points for future personalization. Keep defaults equivalent to the
+# historic behavior unless specific profile overrides are added.
+SIGNAL_PROFILE_OVERRIDES = {
+    "default": {},
+    "aggressiveness:low": {},
+    "aggressiveness:medium": {},
+    "aggressiveness:high": {},
+}
 
 
 def run(state: SharedState) -> SharedState:
@@ -36,8 +168,9 @@ def run(state: SharedState) -> SharedState:
     if sensor is None:
         return state
 
-    summary = extract_features(sensor)
-    signal_hypotheses = _build_signal_hypotheses(summary, sensor)
+    profile_key = _resolve_profile_key(state.preferences.intervention_aggressiveness)
+    summary = extract_features(sensor, profile_key=profile_key)
+    signal_hypotheses = _build_signal_hypotheses(summary, sensor, profile_key=profile_key)
     tick_timestamp = sensor.timestamp
 
     updated_hypotheses = state.hypotheses + [
@@ -60,7 +193,7 @@ def run(state: SharedState) -> SharedState:
 # norms and can be tuned independently per user in a later iteration.
 # ---------------------------------------------------------------------------
 
-def extract_features(sensor: SensorSnapshot) -> dict:
+def extract_features(sensor: SensorSnapshot, profile_key: str = "default") -> dict:
     """
     Produce a structured feature summary from a SensorSnapshot.
 
@@ -68,17 +201,18 @@ def extract_features(sensor: SensorSnapshot) -> dict:
     present (using "unknown" when the sensor value is missing) so downstream
     agents can rely on a consistent schema.
     """
+    profile = _profile_config(profile_key)
     return {
-        "hr_status":        _hr_status(sensor.heart_rate),
-        "hrv_quality":      _hrv_quality(sensor.hrv),
-        "movement_level":   _movement_level(sensor.movement),
-        "noise_alert":      _noise_alert(sensor.noise_db),
-        "light_status":     _light_status(sensor.light_level),
-        "breathing_status": _breathing_status(sensor.breathing_rate),
+        feature_key: _label_for_feature(sensor, feature_spec)
+        for feature_key, feature_spec in profile["features"].items()
     }
 
 
-def _build_signal_hypotheses(summary: dict, sensor: SensorSnapshot) -> list[dict]:
+def _build_signal_hypotheses(
+    summary: dict,
+    sensor: SensorSnapshot,
+    profile_key: str = "default",
+) -> list[dict]:
     """Build a consistent per-signal hypothesis payload for the current tick."""
     evidence = {
         "heart_rate": sensor.heart_rate,
@@ -89,176 +223,82 @@ def _build_signal_hypotheses(summary: dict, sensor: SensorSnapshot) -> list[dict
         "breathing_rate": sensor.breathing_rate,
     }
 
-    signal_specs = (
-        ("noise_alert", summary["noise_alert"], _severity_for_noise_alert),
-        ("movement_spike", summary["movement_level"], _severity_for_movement),
-        ("hr_elevated", summary["hr_status"], _severity_for_hr_status),
-        ("hrv_recovery", summary["hrv_quality"], _severity_for_hrv_quality),
-        ("light_exposure", summary["light_status"], _severity_for_light_status),
-        (
-            "breathing_irregularity",
-            summary["breathing_status"],
-            _severity_for_breathing_status,
-        ),
-    )
+    profile = _profile_config(profile_key)
 
     return [
         {
-            "signal": signal_name,
-            "severity": severity_fn(label),
+            "signal": signal_spec["signal"],
+            "severity": _severity_for_feature_label(
+                profile,
+                signal_spec["feature"],
+                summary[signal_spec["feature"]],
+            ),
             "label": label,
             "evidence": evidence,
             "tick_timestamp": sensor.timestamp,
             "tick_source": TICK_SOURCE_MARKER,
         }
-        for signal_name, label, severity_fn in signal_specs
+        for signal_spec in profile["hypothesis_signals"]
+        for label in [summary[signal_spec["feature"]]]
     ]
 
 
-def _severity_for_hr_status(label: str) -> float:
-    return {
-        "unknown": 0.0,
-        "very_low": 0.65,
-        "low_resting": 0.2,
-        "normal": 0.1,
-        "mildly_elevated": 0.6,
-        "elevated": 0.9,
-    }.get(label, 0.0)
+def _resolve_profile_key(aggressiveness: str | None) -> str:
+    if aggressiveness in {"low", "medium", "high"}:
+        return f"aggressiveness:{aggressiveness}"
+    return "default"
 
 
-def _severity_for_hrv_quality(label: str) -> float:
-    return {
-        "unknown": 0.0,
-        "excellent": 0.1,
-        "good": 0.2,
-        "moderate": 0.45,
-        "low": 0.8,
-    }.get(label, 0.0)
+@lru_cache(maxsize=None)
+def _profile_config(profile_key: str) -> dict:
+    merged = deepcopy(BASE_SIGNAL_PROFILE)
+    overrides = SIGNAL_PROFILE_OVERRIDES.get(profile_key, SIGNAL_PROFILE_OVERRIDES["default"])
+    _deep_update(merged, overrides)
+    return merged
 
 
-def _severity_for_movement(label: str) -> float:
-    return {
-        "unknown": 0.0,
-        "still": 0.05,
-        "minimal": 0.2,
-        "restless": 0.65,
-        "active": 0.95,
-    }.get(label, 0.0)
+def _deep_update(base: dict, updates: dict) -> None:
+    for key, value in updates.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            _deep_update(base[key], value)
+        else:
+            base[key] = value
 
 
-def _severity_for_noise_alert(label: str) -> float:
-    return {
-        "unknown": 0.0,
-        "quiet": 0.05,
-        "moderate": 0.35,
-        "loud": 0.75,
-        "very_loud": 1.0,
-    }.get(label, 0.0)
+def _label_for_feature(sensor: SensorSnapshot, feature_spec: dict) -> str:
+    value = getattr(sensor, feature_spec["sensor_attr"])
+    if value is None:
+        return feature_spec.get("unknown_label", "unknown")
+    return _label_from_ranges(value, feature_spec["ranges"], feature_spec["unknown_label"])
 
 
-def _severity_for_light_status(label: str) -> float:
-    return {
-        "unknown": 0.0,
-        "dark": 0.05,
-        "dim": 0.2,
-        "moderate": 0.55,
-        "bright": 0.9,
-    }.get(label, 0.0)
+def _label_from_ranges(value: float, ranges: list[dict], fallback_label: str) -> str:
+    for range_spec in ranges:
+        if _matches_range(value, range_spec):
+            return range_spec["label"]
+    return fallback_label
 
 
-def _severity_for_breathing_status(label: str) -> float:
-    return {
-        "unknown": 0.0,
-        "very_slow": 0.8,
-        "normal": 0.1,
-        "slightly_elevated": 0.55,
-        "elevated": 0.9,
-    }.get(label, 0.0)
+def _matches_range(value: float, range_spec: dict) -> bool:
+    min_value = range_spec.get("min")
+    max_value = range_spec.get("max")
+    min_inclusive = range_spec.get("min_inclusive", True)
+    max_inclusive = range_spec.get("max_inclusive", False)
+
+    if min_value is not None:
+        if min_inclusive and value < min_value:
+            return False
+        if not min_inclusive and value <= min_value:
+            return False
+
+    if max_value is not None:
+        if max_inclusive and value > max_value:
+            return False
+        if not max_inclusive and value >= max_value:
+            return False
+
+    return True
 
 
-def _hr_status(hr: float | None) -> str:
-    if hr is None:
-        return "unknown"
-    if hr < 50:
-        return "very_low"       # possible bradycardia or sensor artifact
-    if hr < 60:
-        return "low_resting"    # typical deep-sleep range
-    if hr <= 80:
-        return "normal"
-    if hr <= 90:
-        return "mildly_elevated"
-    return "elevated"           # likely awake or stressed
-
-
-def _hrv_quality(hrv: float | None) -> str:
-    """
-    Higher HRV correlates with parasympathetic (rest/recover) dominance.
-    Low HRV suggests sympathetic activation or poor recovery.
-    """
-    if hrv is None:
-        return "unknown"
-    if hrv >= 70:
-        return "excellent"
-    if hrv >= 50:
-        return "good"
-    if hrv >= 30:
-        return "moderate"
-    return "low"
-
-
-def _movement_level(movement: float | None) -> str:
-    """movement is a 0–1 normalized score from the wearable accelerometer."""
-    if movement is None:
-        return "unknown"
-    if movement < 0.05:
-        return "still"
-    if movement < 0.25:
-        return "minimal"
-    if movement < 0.55:
-        return "restless"
-    return "active"
-
-
-def _noise_alert(noise_db: float | None) -> str:
-    """
-    Below 40 dB is quiet bedroom; above 60 dB is conversational level.
-    Returns a severity label rather than a boolean so callers can grade it.
-    """
-    if noise_db is None:
-        return "unknown"
-    if noise_db < 40:
-        return "quiet"
-    if noise_db < 55:
-        return "moderate"
-    if noise_db < 65:
-        return "loud"
-    return "very_loud"
-
-
-def _light_status(light_level: float | None) -> str:
-    """light_level is a 0–1 normalized lux reading."""
-    if light_level is None:
-        return "unknown"
-    if light_level < 0.05:
-        return "dark"
-    if light_level < 0.25:
-        return "dim"
-    if light_level < 0.6:
-        return "moderate"
-    return "bright"
-
-
-def _breathing_status(bpm: float | None) -> str:
-    """
-    Normal sleeping breathing: 12–16 bpm.
-    Elevated breathing may indicate arousal, apnoea recovery, or REM.
-    """
-    if bpm is None:
-        return "unknown"
-    if bpm < 10:
-        return "very_slow"      # possible apnoea or sensor noise
-    if bpm <= 16:
-        return "normal"
-    if bpm <= 20:
-        return "slightly_elevated"
-    return "elevated"
+def _severity_for_feature_label(profile: dict, feature_key: str, label: str) -> float:
+    return profile["features"][feature_key]["severity_by_label"].get(label, 0.0)
