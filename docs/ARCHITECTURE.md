@@ -92,6 +92,65 @@ The following invariants are shared between `app/models/userstate.py` validators
 
 These constraints are intentionally strict enough to catch merge drift while preserving existing payloads used by earlier agent versions.
 
+## 1.3 Runbook: thresholds, feedback loop, and merge readiness
+
+Use this section when tuning behavior or validating a cross-agent change before merge.
+
+### Threshold tuning map (single-owner touchpoints)
+
+- **`sensor_interpreter` thresholds and severity curves:** tune `BASE_SIGNAL_PROFILE` in `app/agents/intelligence/sensor_interpreter.py`.
+  - Edit `features.*.ranges` for bucket cutoffs (for example, noise/light/movement labels).
+  - Edit `features.*.severity_by_label` to change how strongly each label influences downstream reasoning.
+  - Keep `hypothesis_signals` aligned with feature names so generated signal payloads remain coherent.
+- **`disturbance` disturbance triggers and risk ramps:** tune constants in `app/agents/intelligence/disturbance.py`.
+  - `_NOISE_THRESHOLD` controls phase-aware noise sensitivity.
+  - `_RISK_BUMP` controls relative contribution of each disturbance type.
+  - `_risk_delta(...)` controls persistence/decay behavior over consecutive ticks.
+- **`intervention` activation and intensity thresholds:** tune constants in `app/agents/intelligence/intervention.py`.
+  - `_RISK_THRESHOLD` controls when intervention is cleared vs engaged.
+  - `_BASE_INTENSITY_BY_AGGRESSIVENESS` and `_compute_intensity(...)` control output intensity scaling.
+  - `_wake_transition_allowed(...)` controls safety conditions for using `wake_ramp`.
+
+### Morning feedback loop: how reflection changes the next night
+
+1. **Morning:** `journal_reflection` writes a hypothesis with `source="journal_reflection"` and normalized `decision_context`.
+2. **Stored context:** `decision_context` includes guidance such as `risk_posture`, `preferred_intervention_order`, and recommendation notes.
+3. **Next pre-sleep planning:** `strategist._collect_reflection_signals(...)` scans recent `journal_reflection` hypotheses.
+4. **Next-night behavior:** strategist uses those signals to adjust `NightlyPlan.sleep_goal`, reorder `preferred_intervention_order`, and enrich notes.
+
+Operationally: if morning feedback seems ignored, verify that reflection hypotheses include canonical `decision_context` and that strategist can still read them.
+
+### Required invariants (must not break)
+
+- Contract ownership and read/write scopes in `app/pipeline_contracts.py` must stay accurate for every agent.
+- Hypotheses source contracts must remain valid:
+  - `source="sensor_interpreter"` entries include timing anchor (`timestamp` or `date`) and signal payload (`signal_summary` or legacy `signals`).
+  - `source="journal_reflection"` entries include `decision_context` (or accepted aliases) so strategist can learn from them.
+- Model invariants must remain true:
+  - `SleepState.phase/confidence/wake_risk` and `ActiveIntervention.type/intensity` stay inside the defined allowed sets/ranges.
+  - If `active_intervention.type == "none"`, then `active_intervention.intensity == 0.0`.
+- Team boundary invariant: avoid moving functionality across `team_a/team_b/team_c` ownership lines unless `app/pipeline_contracts.py` is updated in the same change.
+
+### Scenario-based validation workflow (and expected outputs)
+
+Run these checks after tuning thresholds:
+
+1. **Baseline deterministic tick:** run `/pipeline/example` and confirm expected progression: interpreted signals → phase/wake risk → disturbance reason/risk change → intervention output.
+2. **Targeted noisy-night check:** use the documented noisy-night input (HR 70, HRV 44, movement 0.28, noise 64 dB, light 0.03).
+   - Expected trend: `noise_alert=loud`, `phase=light`, disturbance reason like `noise_spike:*dB`, wake risk increases, intervention activates with non-zero intensity.
+3. **Morning-to-night loop check:** post a journal entry via `/journal` (or `/journal/example`), then run planning (`/session/start` or `/plan/example`).
+   - Expected output: newest `journal_reflection` hypothesis contains `decision_context`; resulting `nightly_plan` reflects updated risk posture/intervention ordering.
+4. **Regression sweep:** run all Team C fixtures from `app/demo_support/scenario_fixtures.py` and compare trend-level outcomes (phase behavior, wake-risk direction, and intervention behavior) against fixture expectations.
+
+### Merge-readiness checklist (against `app/pipeline_contracts.py`)
+
+- [ ] Agent names are unique and unchanged unless intentionally versioned; `validate_contracts()` still passes.
+- [ ] Each changed agent's `reads`/`writes` in `AGENT_CONTRACTS` still matches implementation reality.
+- [ ] Lifecycle placement (`on_sensor_arrival`, `tick`, `pre_sleep`, `morning`) still matches orchestrator execution.
+- [ ] `owner` assignments are unchanged for isolated team work; any ownership move is explicit and coordinated.
+- [ ] New hypothesis payload keys are backward compatible with current validators/aliases in `app/models/userstate.py`.
+- [ ] Demo and scenario endpoints still produce outputs consistent with documented contract boundaries.
+
 ---
 
 ## 2. Core concept: shared state
