@@ -104,6 +104,13 @@
           </section>
         </div>
       </section>
+
+      <section class="sleep-session-screen" id="sleep-session-screen" aria-live="polite" aria-label="Sleep session running" hidden>
+        <img class="sleep-session-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="320" height="100" />
+        <p class="sleep-session-screen__title">Analyzing your sleep....</p>
+        <p class="sleep-session-screen__subtitle" id="wake-time-summary">Wake-up time set to 7:30 AM</p>
+        <button class="sleep-session-screen__cancel" type="button" id="cancel-session">Tap to cancel</button>
+      </section>
     </main>
 
     <script>
@@ -118,9 +125,31 @@
       const payloadPreview = document.getElementById('payload-preview');
       const form = document.getElementById('begin-sleep-form');
       const activeUserIdLabel = document.getElementById('active-user-id');
+      const sleepSessionScreen = document.getElementById('sleep-session-screen');
+      const wakeTimeSummary = document.getElementById('wake-time-summary');
+      const cancelSessionBtn = document.getElementById('cancel-session');
       const storageKey = 'somnus_demo_user_id';
       const sessionStartUrl = '/api/session/start';
       let currentStep = 0;
+
+      function formatWakeTime(timeValue) {
+        if (!timeValue || !timeValue.includes(':')) return '7:30 AM';
+        const [hourText, minuteText] = timeValue.split(':');
+        const hour = Number(hourText);
+        const minute = Number(minuteText);
+
+        if (Number.isNaN(hour) || Number.isNaN(minute)) return '7:30 AM';
+
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const normalizedHour = hour % 12 || 12;
+        return `${normalizedHour}:${String(minute).padStart(2, '0')} ${period}`;
+      }
+
+      function setSessionScreenVisible(isVisible) {
+        if (!sleepSessionScreen) return;
+        sleepSessionScreen.hidden = !isVisible;
+        document.body.classList.toggle('sleep-session-active', isVisible);
+      }
 
       const flowText = [
         'Set wake-up time → Set wake-up audio → Set sleep profile → Begin sleep',
@@ -226,10 +255,20 @@
             throw new Error(errorText || `Request failed (${response.status})`);
           }
 
-          status.textContent = 'Session started successfully.';
+          const formattedWakeTime = formatWakeTime(payload.preferences?.target_wake_time);
+          if (wakeTimeSummary) {
+            wakeTimeSummary.textContent = `Wake-up time set to ${formattedWakeTime}`;
+          }
+          status.textContent = '';
+          setSessionScreenVisible(true);
         } catch (error) {
           status.textContent = `Could not start session (${error.message}). If this is \"Load failed\", check that the deployed app has the /api proxy route configured.`;
         }
+      });
+
+      cancelSessionBtn?.addEventListener('click', () => {
+        setSessionScreenVisible(false);
+        status.textContent = 'Sleep session cancelled.';
       });
 
       renderStep();
