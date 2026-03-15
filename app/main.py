@@ -129,6 +129,13 @@ def session_journal(
     return result
 
 
+@app.get("/session/{user_id}/journal", tags=["session"])
+def session_journal_entries(user_id: str):
+    """Return all stored journal entries for the given user session."""
+    state = _require_session(user_id)
+    return {"user_id": user_id, "journal_entries": state.journal_history}
+
+
 @app.get("/session", tags=["session"])
 def list_sessions():
     """List all active session user_ids."""

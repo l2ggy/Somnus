@@ -157,7 +157,7 @@
             <section class="journal-quiz-step" data-journal-step="2" hidden>
               <h3 class="begin-sleep-step__title">Any other notes?</h3>
               <div class="journal-quiz-options" role="group" aria-label="Additional notes">
-                <button type="button" class="journal-choice" data-field="notes_choice" data-value="talk_to_somnus">Talk to Somnus</button>
+                <button type="button" class="journal-choice" data-field="notes_choice" data-value="add_notes">Add notes</button>
                 <button type="button" class="journal-choice" data-field="notes_choice" data-value="no_thanks">No thanks</button>
               </div>
               <textarea id="journal-notes" class="journal-notes" name="journal_notes" placeholder="Optional notes for Somnus"></textarea>
@@ -350,16 +350,28 @@
 
       function collectJournalPayload() {
         const userId = getStoredUserId();
-        const notes = document.getElementById('journal-notes').value.trim();
+        const notesInput = document.getElementById('journal-notes');
+        const notes = notesInput.value.trim();
+        const today = new Date();
+        const date = today.toISOString().slice(0, 10);
+
+        const restedScoreByFeeling = {
+          rested: 8,
+          a_little_groggy: 5,
+          still_tired: 3,
+        };
+
+        const awakeningsByQuality = {
+          great: 0,
+          okay: 1,
+          rough: 3,
+        };
 
         return {
-          mood: journalAnswers.morning_feeling,
-          sleep_quality: journalAnswers.sleep_quality,
-          notes_choice: journalAnswers.notes_choice,
-          notes,
-          source: 'post_sleep_quiz',
-          submitted_at: new Date().toISOString(),
-          user_id: userId,
+          date,
+          rested_score: restedScoreByFeeling[journalAnswers.morning_feeling] ?? 5,
+          awakenings_reported: awakeningsByQuality[journalAnswers.sleep_quality] ?? 1,
+          notes: journalAnswers.notes_choice === 'no_thanks' ? '' : notes,
         };
       }
 
@@ -461,6 +473,14 @@
             option.classList.toggle('is-selected', option === button);
           });
 
+          if (field === 'notes_choice') {
+            const notesInput = document.getElementById('journal-notes');
+            notesInput.disabled = value === 'no_thanks';
+            if (value === 'no_thanks') {
+              notesInput.value = '';
+            }
+          }
+
           journalStatus.textContent = '';
         });
       });
@@ -496,6 +516,7 @@
           }
 
           journalStatus.textContent = 'Journal entry saved.';
+          window.location.assign('/sleep-journal.html');
         } catch (error) {
           journalStatus.textContent = `Could not save journal entry (${error.message}).`;
         }

@@ -24,15 +24,100 @@
 
           <section class="journal-panel" aria-label="Journal entry panel">
             <div class="journal-panel__date-row">
-              <button type="button" class="journal-panel__arrow" aria-label="Previous date">←</button>
-              <p class="journal-panel__date">Monday, March 9 2025</p>
-              <button type="button" class="journal-panel__arrow" aria-label="Next date">→</button>
+              <button type="button" class="journal-panel__arrow" id="journal-prev" aria-label="Previous entry">←</button>
+              <p class="journal-panel__date" id="journal-date">Loading entries...</p>
+              <button type="button" class="journal-panel__arrow" id="journal-next" aria-label="Next entry">→</button>
             </div>
 
-            <p class="journal-panel__status">Somnus did not analyze your sleep this night.</p>
+            <p class="journal-panel__status" id="journal-status" aria-live="polite">Fetching your latest journal entries...</p>
           </section>
         </div>
       </section>
     </main>
+
+    <script>
+      const storageKey = 'somnus_demo_user_id';
+      const journalDate = document.getElementById('journal-date');
+      const journalStatus = document.getElementById('journal-status');
+      const prevBtn = document.getElementById('journal-prev');
+      const nextBtn = document.getElementById('journal-next');
+
+      let entries = [];
+      let currentIndex = 0;
+
+      function getStoredUserId() {
+        return (localStorage.getItem(storageKey) || '').trim();
+      }
+
+      function formatDate(isoDate) {
+        if (!isoDate) return 'Unknown date';
+        const parsed = new Date(`${isoDate}T00:00:00`);
+        if (Number.isNaN(parsed.valueOf())) return isoDate;
+        return parsed.toLocaleDateString(undefined, {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+
+      function renderEntry() {
+        if (!entries.length) {
+          journalDate.textContent = 'No entries yet';
+          journalStatus.textContent = 'You have not added a sleep journal entry yet.';
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+
+        const entry = entries[currentIndex];
+        journalDate.textContent = formatDate(entry.date);
+        journalStatus.textContent = `Rested score: ${entry.rested_score}/10 · Awakenings: ${entry.awakenings_reported}${entry.notes ? ` · Notes: ${entry.notes}` : ''}`;
+        prevBtn.disabled = currentIndex <= 0;
+        nextBtn.disabled = currentIndex >= entries.length - 1;
+      }
+
+      async function loadEntries() {
+        const userId = getStoredUserId();
+        if (!userId) {
+          journalDate.textContent = 'Missing user id';
+          journalStatus.textContent = 'Set Demo User ID on Menu first to load your journal.';
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+
+        const url = `/api/session/${encodeURIComponent(userId)}/journal`;
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Request failed (${response.status})`);
+          }
+
+          const data = await response.json();
+          entries = Array.isArray(data.journal_entries) ? data.journal_entries : [];
+          currentIndex = Math.max(entries.length - 1, 0);
+          renderEntry();
+        } catch (error) {
+          journalDate.textContent = 'Unable to load journal';
+          journalStatus.textContent = `Could not load entries (${error.message}).`;
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+        }
+      }
+
+      prevBtn?.addEventListener('click', () => {
+        currentIndex = Math.max(0, currentIndex - 1);
+        renderEntry();
+      });
+
+      nextBtn?.addEventListener('click', () => {
+        currentIndex = Math.min(entries.length - 1, currentIndex + 1);
+        renderEntry();
+      });
+
+      loadEntries();
+    </script>
   </body>
 </html>
