@@ -104,8 +104,8 @@
       async function loadJournal() {
         const userId = getStoredUserId();
         if (!userId) {
-          dateEl.textContent = 'Demo User ID missing';
-          statusEl.textContent = 'Set Demo User ID on the Menu page first.';
+          dateEl.textContent = 'User ID missing';
+          statusEl.textContent = 'Set User ID on the Menu page first.';
           prevBtn.disabled = true;
           nextBtn.disabled = true;
           return;
