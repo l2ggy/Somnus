@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .envassets/BackgroundLandscape.svg
 assets/BackgroundPortrait.svg
+.env
+.env
+.env
