@@ -135,7 +135,7 @@ If both succeed, backend is working.
 ## 8) Connect frontend later
 
 When frontend exists, set:
-- `API_BASE_URL=https://<your-render-url>`
+- `API_BASE_URL=https://somnus-api.onrender.com`
 
 Frontend calls:
 - `POST /session/start`
