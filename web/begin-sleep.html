@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/styles/menu.css" />
   </head>
   <body>
-    <main class="menu-screen" aria-label="Begin Sleep screen">
+    <main class="menu-screen" id="begin-sleep-screen" aria-label="Begin Sleep screen">
       <img class="menu-screen__background" src="/assets/BackgroundPortrait.svg" alt="" aria-hidden="true" />
       <section class="menu-screen__content" aria-label="Begin Sleep">
         <header class="menu-screen__header anim-pop-in" style="--anim-delay: 120ms">
@@ -104,6 +104,20 @@
           </section>
         </div>
       </section>
+
+      <section
+        class="sleep-session-screen"
+        id="sleep-session-screen"
+        aria-live="polite"
+        hidden
+        tabindex="0"
+        role="button"
+      >
+        <img class="sleep-session-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="320" height="98" />
+        <p class="sleep-session-screen__headline">Analyzing your sleep....</p>
+        <p class="sleep-session-screen__wake-time" id="session-wake-time">Wake-up time set to 7:30 AM</p>
+        <p class="sleep-session-screen__cancel">Tap to cancel</p>
+      </section>
     </main>
 
     <script>
@@ -115,6 +129,9 @@
       const progressFill = document.getElementById('quiz-progress-fill');
       const progressBar = progressFill?.parentElement;
       const status = document.getElementById('session-status');
+      const beginSleepScreen = document.getElementById('begin-sleep-screen');
+      const sleepSessionScreen = document.getElementById('sleep-session-screen');
+      const sessionWakeTimeLabel = document.getElementById('session-wake-time');
       const payloadPreview = document.getElementById('payload-preview');
       const form = document.getElementById('begin-sleep-form');
       const activeUserIdLabel = document.getElementById('active-user-id');
@@ -203,6 +220,45 @@
         renderStep();
       });
 
+      function formatWakeTimeLabel(value) {
+        if (!value) return '7:30 AM';
+        const [rawHours, rawMinutes] = value.split(':').map(Number);
+        if (Number.isNaN(rawHours) || Number.isNaN(rawMinutes)) return value;
+        const meridiem = rawHours >= 12 ? 'PM' : 'AM';
+        const hours12 = rawHours % 12 || 12;
+        return `${hours12}:${String(rawMinutes).padStart(2, '0')} ${meridiem}`;
+      }
+
+      function showSessionScreen() {
+        const wakeTime = document.getElementById('wake-time')?.value || '07:30';
+        if (sessionWakeTimeLabel) {
+          sessionWakeTimeLabel.textContent = `Wake-up time set to ${formatWakeTimeLabel(wakeTime)}`;
+        }
+
+        beginSleepScreen?.classList.add('menu-screen--session-active');
+        if (!sleepSessionScreen) return;
+        sleepSessionScreen.hidden = false;
+        sleepSessionScreen.focus();
+      }
+
+      function hideSessionScreen() {
+        beginSleepScreen?.classList.remove('menu-screen--session-active');
+        if (!sleepSessionScreen) return;
+        sleepSessionScreen.hidden = true;
+        status.textContent = 'Sleep session canceled.';
+      }
+
+      ['click', 'touchstart'].forEach((eventName) => {
+        sleepSessionScreen?.addEventListener(eventName, hideSessionScreen, { passive: true });
+      });
+
+      sleepSessionScreen?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          hideSessionScreen();
+        }
+      });
+
       form?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const payload = collectPayload();
@@ -227,6 +283,7 @@
           }
 
           status.textContent = 'Session started successfully.';
+          showSessionScreen();
         } catch (error) {
           status.textContent = `Could not start session (${error.message}). If this is \"Load failed\", check that the deployed app has the /api proxy route configured.`;
         }

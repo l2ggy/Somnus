@@ -17,6 +17,7 @@
   height: 100dvh;
   object-fit: cover;
   object-position: center;
+  transition: filter 320ms ease, transform 320ms ease;
   z-index: 0;
 }
 
@@ -416,6 +417,60 @@
   min-height: 1.4em;
   color: var(--color-gray-indigo);
   font-size: clamp(0.92rem, 3vw, 1.12rem);
+}
+
+
+.menu-screen--session-active .menu-screen__background {
+  transform: scale(1.06);
+  filter: blur(7px) brightness(0.42) saturate(0.85);
+}
+
+.menu-screen--session-active .menu-screen__content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sleep-session-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: clamp(1rem, 3.8vw, 1.5rem);
+  padding: clamp(1.5rem, 6vw, 3rem);
+  background: linear-gradient(180deg, rgba(36, 33, 79, 0.56), rgba(17, 15, 54, 0.7));
+  cursor: pointer;
+}
+
+.sleep-session-screen[hidden] {
+  display: none;
+}
+
+.sleep-session-screen__logo {
+  width: clamp(14rem, 70vw, 23rem);
+  height: auto;
+}
+
+.sleep-session-screen__headline {
+  margin: 0;
+  font-size: clamp(1.15rem, 4.2vw, 2rem);
+  font-weight: 700;
+  font-style: italic;
+}
+
+.sleep-session-screen__wake-time,
+.sleep-session-screen__cancel {
+  margin: 0;
+  font-size: clamp(1rem, 3.6vw, 1.45rem);
+  color: rgba(255, 255, 255, 0.86);
+  font-style: italic;
+}
+
+.sleep-session-screen__cancel {
+  margin-top: 0.35rem;
 }
 
 @media (min-width: 768px) {

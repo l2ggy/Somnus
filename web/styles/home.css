@@ -17,6 +17,16 @@
   height: 100dvh;
   object-fit: cover;
   object-position: center;
+  filter: brightness(0.74) saturate(0.9);
+  z-index: 0;
+}
+
+.home-screen::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 14%, rgba(255, 255, 255, 0.07), rgba(15, 10, 46, 0.35) 65%, rgba(8, 6, 28, 0.52));
+  pointer-events: none;
   z-index: 0;
 }
 
@@ -55,7 +65,7 @@
 
 @media (min-width: 768px) {
   .home-screen__background {
-    content: url('../assets/BackgroundLandscape.svg');
+    content: url('../assets/BackgroundPortraitDarker.svg');
   }
 
   .home-screen__content--intro {
