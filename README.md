@@ -103,20 +103,6 @@ Then open:
 
 ---
 
-## Team and contributions
-
-- **Boris — AI/ML & Frontend Lead**
-  - Built sleep intelligence and personalization logic across `app/agents/intelligence/`
-  - Developed key real-time decision components and planning/reflection integration
-- **Jessica — Data & Backend Lead**
-  - Built FastAPI backend routes, orchestration flow, ingestion, and persistence
-  - Implemented session lifecycle and API integration contracts
-- **Nicole — Product & Submission Lead**
-  - Led product narrative, branding, presentation, and demo direction
-  - Maintained project-level documentation and submission assets
-
----
-
 ## Future roadmap
 
 - Expand from web experience to native mobile app
