@@ -12,7 +12,7 @@ Architecture note:
 
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class UserPreferences(BaseModel):
@@ -60,6 +60,16 @@ class SleepState(BaseModel):
     )
     disturbance_reason: Optional[str] = None
 
+    @field_validator("disturbance_reason")
+    @classmethod
+    def validate_disturbance_reason(cls, value: Optional[str]) -> Optional[str]:
+        """Keep disturbance_reason nullable, but never persist empty strings."""
+        if value is None:
+            return None
+        if not value.strip():
+            raise ValueError("disturbance_reason must be a non-empty string when present")
+        return value
+
 
 class ActiveIntervention(BaseModel):
     """
@@ -82,6 +92,13 @@ class ActiveIntervention(BaseModel):
     )
     started_at: Optional[str] = None
     rationale: Optional[str] = None  # Human-readable reason chosen by an agent
+
+    @model_validator(mode="after")
+    def validate_none_semantics(self) -> "ActiveIntervention":
+        """Formalize Team C contract: no intervention implies zero intensity."""
+        if self.type == "none" and self.intensity != 0.0:
+            raise ValueError("active_intervention.intensity must be 0.0 when type is 'none'")
+        return self
 
 
 class JournalEntry(BaseModel):
@@ -139,7 +156,7 @@ class SharedState(BaseModel):
     sleep_state: SleepState = Field(default_factory=SleepState)
     active_intervention: ActiveIntervention = Field(default_factory=ActiveIntervention)
     nightly_plan: NightlyPlan = Field(default_factory=NightlyPlan)
-    # Person C-owned hypothesis log with backward-compatible dict schema.
+    # Team C-owned hypothesis log with explicit source contracts and aliases.
     hypotheses: List[Dict[str, Any]] = Field(default_factory=list)
     journal_history: List[JournalEntry] = Field(default_factory=list)
 
@@ -151,6 +168,14 @@ class SharedState(BaseModel):
 
         Required shape:
           - source: non-empty string identifying producer agent/component.
+
+        Source-specific contract (aligned with app/pipeline_contracts.py writes):
+          - sensor_interpreter (writes hypotheses during tick):
+            requires timing anchor (timestamp or date) and signal payload
+            (signal_summary or legacy alias "signals").
+          - journal_reflection (writes hypotheses during morning):
+            requires reflection context via decision_context or legacy aliases
+            "reflection" / "rationale".
 
         Optional compatible keys:
           - timestamp or date: time anchor for the hypothesis.
@@ -190,6 +215,21 @@ class SharedState(BaseModel):
             if decision_context is not None and not isinstance(decision_context, (str, dict)):
                 raise ValueError(
                     f"hypotheses[{i}].decision_context/reflection/rationale must be a string or object when present"
+                )
+
+            if source == "sensor_interpreter":
+                if not (entry.get("timestamp") or entry.get("date")):
+                    raise ValueError(
+                        f"hypotheses[{i}] from sensor_interpreter must include timestamp or date"
+                    )
+                if signal_summary is None:
+                    raise ValueError(
+                        f"hypotheses[{i}] from sensor_interpreter must include signal_summary or signals"
+                    )
+
+            if source == "journal_reflection" and decision_context is None:
+                raise ValueError(
+                    f"hypotheses[{i}] from journal_reflection must include decision_context/reflection/rationale"
                 )
 
         return hypotheses
