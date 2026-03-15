@@ -5,3 +5,8 @@ __pycache__/
 *.db
 assets/BackgroundLandscape.svg
 assets/BackgroundPortrait.svg
+
+# ML artifacts — regenerable or too large for git
+models/*.pkl
+data/processed/*.csv
+data/raw/sleep_accel/
