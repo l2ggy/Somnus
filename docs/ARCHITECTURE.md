@@ -35,20 +35,37 @@ Somnus/
 │   ├── models/
 │   │   ├── userstate.py         Domain models (SharedState and children)
 │   │   └── api.py               HTTP request models
-│   └── agents/
-│       ├── intake.py            Sensor ingestion + validation
-│       ├── sensor_interpreter.py  Feature extraction
-│       ├── sleep_state.py       Sleep phase classifier
-│       ├── disturbance.py       Disturbance detector
-│       ├── intervention.py      Intervention selector
-│       ├── strategist.py        Pre-sleep planner (deterministic + GPT)
-│       └── journal_reflection.py  Morning reflection (deterministic + GPT)
+│   ├── agents/
+│   │   ├── backend/
+│   │   │   └── intake.py        Sensor ingestion + validation
+│   │   ├── intelligence/
+│   │   │   ├── sensor_interpreter.py  Feature extraction
+│   │   │   ├── sleep_state.py   Sleep phase classifier
+│   │   │   ├── disturbance.py   Disturbance detector
+│   │   │   ├── intervention.py  Intervention selector
+│   │   │   ├── strategist.py    Pre-sleep planner (deterministic + GPT)
+│   │   │   └── journal_reflection.py  Morning reflection (deterministic + GPT)
+│   │   └── *.py wrappers         Backward-compatible import aliases
+│   └── demo_support/
+│       └── demo_states.py       Demo/user-flow fixtures for UI endpoints
 ├── docs/
 │   └── ARCHITECTURE.md          This file
 ├── .env                         OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
 ├── requirements.txt
 └── somnus.db                    SQLite database (created on first run)
 ```
+
+---
+
+## 1.1 Ownership boundaries for parallel development
+
+To reduce merge conflicts, code is split into sub-folders aligned with the 3-person team model and encoded in `app/pipeline_contracts.py`.
+
+- **team_a (Product + Frontend + Pitch)** owns demo/user-flow fixtures in `app/demo_support/` used by `/state/example`, `/pipeline/example`, `/plan/example`, and `/journal/example`.
+- **team_b (Backend + Orchestration)** owns ingestion at the API boundary (`app/agents/backend/intake.py`) plus runtime lifecycle coordination (`app/orchestrator.py`, `app/store.py`, `app/main.py`).
+- **team_c (Sleep Intelligence + Personalization)** owns all modeling/policy agents in `app/agents/intelligence/` (sensor interpretation, sleep-state estimation, disturbance, intervention, planning, reflection).
+
+`AgentContract` is the source of truth for lifecycle, reads/writes, and owner metadata. The orchestrator validates contracts at runtime before ticks so incompatible merges (like duplicate agent names) fail fast.
 
 ---
 
