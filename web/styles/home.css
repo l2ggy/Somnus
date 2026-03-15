@@ -35,6 +35,10 @@
   text-align: center;
 }
 
+.home-screen__content--intro {
+  cursor: pointer;
+}
+
 .home-screen__logo {
   width: clamp(12rem, 60vw, 15rem);
   height: auto;
@@ -43,7 +47,8 @@
 .home-screen__prompt {
   margin: 0;
   color: var(--color-white);
-  font-size: clamp(1rem, 4.5vw, 1.25rem);
+  font-size: clamp(0.82rem, 3.8vw, 1rem);
+  font-style: italic;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -53,7 +58,7 @@
     content: url('../assets/BackgroundLandscape.svg');
   }
 
-  .home-screen__content {
+  .home-screen__content--intro {
     justify-content: flex-end;
     padding-bottom: 12vh;
     padding-bottom: 12svh;
