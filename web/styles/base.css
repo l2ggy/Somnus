@@ -1,0 +1,106 @@
+:root {
+  --color-white: #ffffff;
+  --color-gray-indigo: #a29fb8;
+  --font-primary: 'Body Grotesque', 'Avenir Next', 'Avenir', 'Segoe UI', sans-serif;
+
+  /* reusable motion system */
+  --motion-duration-fast: 420ms;
+  --motion-duration-base: 620ms;
+  --motion-duration-slow: 860ms;
+  --motion-ease-pop: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  font-family: var(--font-primary);
+  background-color: #271669;
+  color: var(--color-white);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.96);
+    filter: blur(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gentle-pulse {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.anim-pop-in {
+  opacity: 0;
+  animation-name: pop-in;
+  animation-duration: var(--motion-duration-base);
+  animation-timing-function: var(--motion-ease-pop);
+  animation-fill-mode: forwards;
+  animation-delay: var(--anim-delay, 0ms);
+  will-change: transform, opacity;
+}
+
+.anim-fade-in {
+  opacity: 0;
+  animation-name: fade-in;
+  animation-duration: var(--motion-duration-slow);
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+  animation-delay: var(--anim-delay, 0ms);
+}
+
+.anim-pulse {
+  animation: gentle-pulse 2.6s ease-in-out var(--anim-delay, 0ms) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-pop-in,
+  .anim-fade-in,
+  .anim-pulse {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
