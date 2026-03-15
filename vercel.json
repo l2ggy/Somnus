@@ -9,15 +9,7 @@
   ],
   "routes": [
     {
-      "src": "/assets/(.*)",
-      "dest": "/web/assets/$1"
-    },
-    {
-      "src": "/styles/(.*)",
-      "dest": "/web/styles/$1"
-    },
-    {
-      "src": "/(.*)",
+      "src": "/",
       "dest": "/web/index.html"
     }
   ]
