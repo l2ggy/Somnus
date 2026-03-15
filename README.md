@@ -26,8 +26,7 @@ The goal is simple: **fewer disruptions, smoother wakeups, and personalized slee
 - **Frontend (Vercel):** https://somnus-gamma.vercel.app/
 - **Backend API (Render):** https://somnus-api.onrender.com
 - **Devpost:** https://devpost.com/software/somnus-udcfsk
-- **Canva presentation:** https://www.canva.com/design/DAHD6B1R3jA/Z2kF_LeWoFk4smkhWoUUJw/view?utm_content=DAHD6B1R3jA&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hdf3b9a7fe8
-- **Demo video:** _link pending update_
+- **Canva presentation:** https://www.canva.com/design/DAHD6B1R3jA/Z2kF_LeWoFk4smkhWoUUJw/view
 
 ---
 
