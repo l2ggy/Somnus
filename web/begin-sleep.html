@@ -631,7 +631,7 @@
         const wakeTime = document.getElementById('wake-time').value;
         const userId = getStoredUserId();
         if (!userId) {
-          status.textContent = 'Please enter a Demo User ID to continue.';
+          status.textContent = 'Please enter a User ID to continue.';
           return false;
         }
         if (currentStep === 0 && !wakeTime) {
@@ -755,7 +755,7 @@
         const payload = collectPayload();
 
         if (!payload.user_id) {
-          status.textContent = 'Missing user id. Set Demo User ID on Menu first.';
+          status.textContent = 'Missing user id. Set User ID on Menu first.';
           return;
         }
 
@@ -841,7 +841,7 @@
 
         const userId = getStoredUserId();
         if (!userId) {
-          journalStatus.textContent = 'Missing user id. Set Demo User ID on Menu first.';
+          journalStatus.textContent = 'Missing user id. Set User ID on Menu first.';
           return;
         }
 
