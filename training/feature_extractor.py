@@ -181,8 +181,7 @@ def build_feature_windows(subject_record: SubjectRecord, subject_id: str) -> lis
 
     rows: list[dict] = []
 
-    # Temporal context — seeded with defaults for the first window
-    prev_stage: str = "unknown"
+    # Temporal context — seeded with 0 for the first window
     prev_motion_mean: float = 0.0
 
     for _, label_row in df_labels.iterrows():
@@ -212,14 +211,12 @@ def build_feature_windows(subject_record: SubjectRecord, subject_id: str) -> lis
             **motion_feats,
             **extract_hr_features(hr_win),
             **extract_step_features(steps_win),
-            "prev_stage": prev_stage,
             "prev_motion_mean": prev_motion_mean,
             "sleep_stage": sleep_stage,
         }
         rows.append(row)
 
         # Advance temporal context for the next window
-        prev_stage = sleep_stage
         prev_motion_mean = motion_feats.get("motion_mean") or 0.0
 
     return rows

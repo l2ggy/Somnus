@@ -3,7 +3,7 @@ train_sleep_model.py
 --------------------
 Trains a Random Forest sleep-state classifier on the extracted feature dataset.
 
-Input:  data/processed/sleep_training.csv
+Input:  data/processed/sleep_training_full.csv  (merged sleep_accel + DREAMT)
 Output: models/sleep_model.pkl      (fitted RandomForestClassifier)
         models/label_encoder.pkl    (LabelEncoder so runtime can decode predictions)
 
@@ -28,7 +28,7 @@ from sklearn.preprocessing import LabelEncoder
 # Paths
 # ---------------------------------------------------------------------------
 
-DATA_PATH = Path(__file__).parent.parent / "data" / "processed" / "sleep_training.csv"
+DATA_PATH = Path(__file__).parent.parent / "data" / "processed" / "sleep_training_full.csv"
 MODELS_DIR = Path(__file__).parent.parent / "models"
 MODEL_PATH = MODELS_DIR / "sleep_model.pkl"
 ENCODER_PATH = MODELS_DIR / "label_encoder.pkl"
@@ -45,10 +45,11 @@ FEATURE_COLS = [
     "hr_std",
     "steps_sum",
     "prev_motion_mean",
+    "time_since_sleep_start",
+    "rolling_motion_mean",
+    "rolling_hr_mean",
 ]
 
-# Categorical column encoded via get_dummies before training
-CATEGORICAL_COLS = ["prev_stage"]
 TARGET_COL = "sleep_stage"
 
 # Canonical label order (preserved in encoder for deterministic class indices)
@@ -61,11 +62,43 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+def _engineer_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add per-subject temporal features derived from base signal columns.
+
+    Computed per subject (sorted by timestamp):
+      prev_motion_mean       — motion_mean from the previous window (0 for first)
+      time_since_sleep_start — seconds elapsed from the subject's first valid window
+      rolling_motion_mean    — mean of motion_mean over the current + 2 prior windows
+      rolling_hr_mean        — mean of hr_mean over the current + 2 prior windows
+
+    Args:
+        df: Merged feature DataFrame with at least subject_id, timestamp,
+            motion_mean, and hr_mean columns.
+
+    Returns:
+        DataFrame with four new columns appended, sorted by subject_id, timestamp.
+    """
+    df = df.sort_values(["subject_id", "timestamp"]).reset_index(drop=True).copy()
+    grp = df.groupby("subject_id")
+
+    df["prev_motion_mean"] = grp["motion_mean"].shift(1).fillna(0.0)
+    df["time_since_sleep_start"] = df["timestamp"] - grp["timestamp"].transform("min")
+    df["rolling_motion_mean"] = grp["motion_mean"].transform(
+        lambda s: s.rolling(3, min_periods=1).mean()
+    )
+    df["rolling_hr_mean"] = grp["hr_mean"].transform(
+        lambda s: s.rolling(3, min_periods=1).mean()
+    )
+
+    return df
+
+
 def load_dataset(path: Path = DATA_PATH) -> pd.DataFrame:
-    """Load the feature CSV and drop rows with any NaN in feature or target columns."""
+    """Load the feature CSV, engineer temporal features, and drop NaN rows."""
     df = pd.read_csv(path)
+    df = _engineer_temporal_features(df)
     before = len(df)
-    df = df.dropna(subset=FEATURE_COLS + CATEGORICAL_COLS + [TARGET_COL])
+    df = df.dropna(subset=FEATURE_COLS + [TARGET_COL])
     dropped = before - len(df)
     if dropped:
         logger.info("Dropped %d rows with missing values (%.1f%%)", dropped, 100 * dropped / before)
@@ -88,17 +121,13 @@ def encode_labels(y: pd.Series) -> tuple[np.ndarray, LabelEncoder]:
 def train(df: pd.DataFrame) -> tuple[RandomForestClassifier, LabelEncoder, dict]:
     """Full train/eval pipeline.
 
-    prev_stage is one-hot encoded via get_dummies() and concatenated with the
-    numeric feature columns before training.
-
     Args:
         df: Feature DataFrame from load_dataset().
 
     Returns:
         Tuple of (fitted model, label encoder, metrics dict).
     """
-    stage_dummies = pd.get_dummies(df["prev_stage"], prefix="prev_stage")
-    X = pd.concat([df[FEATURE_COLS], stage_dummies], axis=1).to_numpy()
+    X = df[FEATURE_COLS].to_numpy()
     y_raw = df[TARGET_COL]
     y, le = encode_labels(y_raw)
 
