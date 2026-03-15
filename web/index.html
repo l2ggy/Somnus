@@ -2,18 +2,76 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Somnus</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        font-family: "Avenir Next", "Avenir", "Nunito Sans", "Segoe UI", sans-serif;
+        color: #f5f7ff;
+        background-color: #070b2f;
+      }
+
+      .home-screen {
+        position: relative;
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: env(safe-area-inset-top, 24px) 24px calc(env(safe-area-inset-bottom, 24px) + 48px);
+        background-image: url("../assets-and-branding/BackgroundPortrait.svg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        overflow: hidden;
+      }
+
+      .logo {
+        width: min(64vw, 320px);
+        max-width: 100%;
+        height: auto;
+        filter: drop-shadow(0 4px 24px rgba(7, 11, 47, 0.45));
+      }
+
+      .tap-to-start {
+        position: absolute;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 42px);
+        left: 50%;
+        transform: translateX(-50%);
+        margin: 0;
+        font-size: clamp(1rem, 4.6vw, 1.25rem);
+        letter-spacing: 0.06em;
+        text-transform: lowercase;
+        color: rgba(245, 247, 255, 0.88);
+        text-shadow: 0 2px 6px rgba(7, 11, 47, 0.35);
+      }
+
+      @media (min-width: 768px) {
+        .home-screen {
+          background-image: url("../assets-and-branding/BackgroundLandscape.svg");
+        }
+
+        .logo {
+          width: min(38vw, 350px);
+        }
+      }
+    </style>
   </head>
   <body>
-    <main>
-      <h1>Somnus Web Frontend Placeholder</h1>
-      <p>
-        This static page confirms the Vercel frontend root is configured correctly.
-      </p>
-      <p>
-        Next step: replace this file with the real web app (React, Next.js, etc.).
-      </p>
+    <main class="home-screen" aria-label="Somnus home">
+      <img class="logo" src="../assets-and-branding/Logo.svg" alt="Somnus" />
+      <p class="tap-to-start">tap to start</p>
     </main>
   </body>
 </html>

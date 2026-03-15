@@ -3,13 +3,17 @@
   "version": 2,
   "builds": [
     {
-      "src": "web/**/*",
+      "src": "web/index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "assets-and-branding/**/*",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "^/$",
       "dest": "/web/index.html"
     }
   ]
