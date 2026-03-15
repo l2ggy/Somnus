@@ -168,6 +168,64 @@ class UserPolicy(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Decision trace (compact observability object inside OuterLoopReport)
+# ---------------------------------------------------------------------------
+
+class ScoreChange(BaseModel):
+    """Before/after record for one intervention's policy score update."""
+    before: float
+    after: float
+    delta: float                        # after - before; non-zero means something changed
+    source: str                         # "deterministic", "gpt+deterministic", "unchanged"
+
+
+class DecisionTrace(BaseModel):
+    """
+    Compact structured trace of what the outer loop learned and decided.
+
+    Designed so a single object can answer the three key demo/debug questions:
+      - What did the system learn tonight?       → score_changes, night_quality, verdicts
+      - What changed in the policy?             → score_changes, risk_posture_transition
+      - What will be different tomorrow night?  → blocked_tomorrow, preferred_tomorrow,
+                                                  next_night_goal, next_night_order
+
+    Included in every OuterLoopReport.  Frontend/demo can render this alone
+    without unpacking the full nested report.
+    """
+    # Tonight's session outcome
+    night_quality: Literal["poor", "fair", "good"]
+    # Compact verdict list: [{type, verdict, confidence}] — omits reason for brevity
+    verdicts: List[Dict[str, Any]]
+
+    # Per-intervention score changes this update cycle
+    # Key: intervention type. Value: ScoreChange with before/after/delta/source.
+    score_changes: Dict[str, ScoreChange]
+
+    # Risk posture before → after (None if unchanged)
+    risk_posture_before: str
+    risk_posture_after: str
+
+    # Tomorrow's intervention guidance derived from updated policy
+    # Interventions with score ≤ -0.50 (will be blocked from candidates)
+    blocked_tomorrow: List[str]
+    # Interventions with score ≤ -0.10 (will be deprioritized to back of list)
+    discouraged_tomorrow: List[str]
+    # Interventions with score ≥ +0.10 (will be moved to front of list)
+    preferred_tomorrow: List[str]
+
+    # GPT pattern observation (empty string if deterministic mode or GPT unavailable)
+    pattern_hypothesis: str
+
+    # Next-night plan summary
+    next_night_goal: str
+    next_night_order: List[str]         # preferred_intervention_order from generated plan
+    next_night_notes: str
+
+    # Per-step mode used (e.g. {"summary": "deterministic", "policy": "gpt"})
+    step_modes: Dict[str, str]
+
+
+# ---------------------------------------------------------------------------
 # Outer loop report (returned from the orchestrator)
 # ---------------------------------------------------------------------------
 
@@ -176,6 +234,8 @@ class OuterLoopReport(BaseModel):
     Combined result returned when the outer loop runs end-of-night.
 
     Bundles the four agent outputs so callers get everything in one response.
+    The decision_trace field is the compact summary — frontends that only need
+    to render "what changed" can read just that field.
     """
     user_id: str
     date: str
@@ -184,3 +244,4 @@ class OuterLoopReport(BaseModel):
     user_policy: UserPolicy
     next_night_plan: Dict[str, Any]     # NightlyPlan as dict (avoids circular import)
     mode_used: str                      # "deterministic", "gpt", or "partial_gpt"
+    decision_trace: DecisionTrace       # Compact structured summary of all decisions

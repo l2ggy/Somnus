@@ -75,8 +75,22 @@ def save_policy(policy: UserPolicy) -> None:
         conn.commit()
 
 
+_VALID_INTERVENTION_TYPES = frozenset({
+    "brown_noise", "white_noise", "pink_noise",
+    "rain", "waves", "breathing_pace", "wake_ramp",
+})
+
+
 def load_policy(user_id: str) -> UserPolicy | None:
-    """Load a UserPolicy by user_id.  Returns None if not found or invalid."""
+    """
+    Load a UserPolicy by user_id.
+
+    Sanitizes intervention_scores on load: removes unknown/stale types and
+    ensures all valid types have a score entry.  This protects against old
+    stored data that has renamed or removed intervention types.
+
+    Returns None if the row is missing or fails Pydantic validation.
+    """
     with _conn() as conn:
         row = conn.execute(
             "SELECT policy_json FROM user_policies WHERE user_id = ?",
@@ -87,10 +101,47 @@ def load_policy(user_id: str) -> UserPolicy | None:
         return None
 
     try:
-        return UserPolicy.model_validate_json(row["policy_json"])
+        policy = UserPolicy.model_validate_json(row["policy_json"])
     except Exception as exc:
         logger.error("Failed to load UserPolicy for %s: %s", user_id, exc)
         return None
+
+    return _sanitize_policy_scores(policy)
+
+
+def _sanitize_policy_scores(policy: UserPolicy) -> UserPolicy:
+    """
+    Remove unknown intervention types and backfill any missing valid ones.
+
+    This makes load_policy safe against:
+      - Old stored data with renamed types (e.g. "ocean_waves" → "waves")
+      - Future types added to the valid set that aren't in old records
+      - Any injection of arbitrary keys via GPT output that leaked into storage
+    """
+    raw = dict(policy.intervention_scores)
+    unknown = [k for k in raw if k not in _VALID_INTERVENTION_TYPES]
+    if unknown:
+        logger.warning(
+            "load_policy: dropping unknown intervention types for user=%s: %s",
+            policy.user_id, unknown,
+        )
+        for k in unknown:
+            del raw[k]
+
+    # Ensure all valid types exist (backfill with 0.0 if missing from old data)
+    for t in _VALID_INTERVENTION_TYPES:
+        raw.setdefault(t, 0.0)
+
+    # Also sanitize gpt_score_adjustments the same way
+    gpt_adj = {k: v for k, v in policy.gpt_score_adjustments.items()
+                if k in _VALID_INTERVENTION_TYPES}
+
+    if unknown or len(gpt_adj) != len(policy.gpt_score_adjustments):
+        return policy.model_copy(update={
+            "intervention_scores": raw,
+            "gpt_score_adjustments": gpt_adj,
+        })
+    return policy
 
 
 def default_policy(user_id: str) -> UserPolicy:

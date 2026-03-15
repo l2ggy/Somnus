@@ -232,36 +232,107 @@ def get_next_night_plan(user_id: str):
     Fetch the next-night plan derived from the user's accumulated policy.
 
     Re-derives the plan from the stored UserPolicy using the current session's
-    preferences.  Returns 404 if the user has no session or no policy history.
+    preferences.  Returns 404 if the user has no policy history.
 
-    For richer plans use POST /session/start?mode=gpt which runs the full
+    For richer plans, use POST /session/start?mode=gpt which runs the full
     strategist with reflection signals.
     """
-    from app.outer_loop import store as outer_store
+    from app.models.outer_loop import NightSummary
     from app.outer_loop.next_night_planner_agent import run as plan_deterministic
     from app.outer_loop.night_summary_agent import _infer_date
-    from app.models.outer_loop import NightSummary
 
     state = _require_session(user_id)
     policy = outer_store.load_policy(user_id)
     if policy is None:
         raise HTTPException(
             status_code=404,
-            detail=f"No outer-loop policy found for '{user_id}'. Run /session/{user_id}/end first.",
+            detail=f"No outer-loop policy for '{user_id}'. Run POST /session/{user_id}/end first.",
         )
 
-    # Build a minimal stub summary so the planner has context shape
-    stub_summary = NightSummary(
-        user_id=user_id,
-        date=_infer_date(state),
-        total_ticks=0,
-    )
+    stub_summary = NightSummary(user_id=user_id, date=_infer_date(state), total_ticks=0)
     plan, mode_used = plan_deterministic(policy, stub_summary, state.preferences)
     return {
-        "user_id":   user_id,
-        "plan":      plan,
-        "mode_used": mode_used,
+        "user_id":      user_id,
+        "plan":         plan,
+        "mode_used":    mode_used,
         "policy_notes": policy.policy_notes,
+    }
+
+
+@app.get("/user/{user_id}/outer-loop-summary", tags=["outer_loop"])
+def get_outer_loop_summary(user_id: str):
+    """
+    Compact read-only snapshot of the outer loop state for a user.
+
+    Returns everything a frontend or demo needs to display the learning layer:
+    - preferred / discouraged / blocked interventions (from current policy)
+    - rested score trend (last 7 nights)
+    - latest pattern hypothesis (GPT-generated, if available)
+    - current risk posture and avg rested score
+    - most recent night review summary
+    - next-night plan summary
+
+    Safe when no prior outer-loop run exists — returns a "no history yet" shape
+    rather than 404, so the frontend can show a clean empty state.
+    """
+    from app.models.outer_loop import NightSummary
+    from app.outer_loop.next_night_planner_agent import run as plan_deterministic
+    from app.outer_loop.night_summary_agent import _infer_date
+    from app.outer_loop.run import _BLOCK_THRESHOLD, _DEPRIORITIZE_THRESHOLD, _PREFER_THRESHOLD
+
+    # Policy — always returns a usable object (zero-state default if no history)
+    policy = outer_store.load_or_default_policy(user_id)
+
+    scores = policy.intervention_scores
+    preferred      = [iv for iv, s in scores.items() if s >= _PREFER_THRESHOLD]
+    discouraged    = [iv for iv, s in scores.items() if _DEPRIORITIZE_THRESHOLD >= s > _BLOCK_THRESHOLD]
+    blocked        = [iv for iv, s in scores.items() if s <= _BLOCK_THRESHOLD]
+
+    preferred.sort(key=lambda iv: -scores[iv])
+
+    # Most recent night report
+    last_report = None
+    last_dates = outer_store.list_night_reports(user_id, limit=1)
+    if last_dates:
+        raw = outer_store.load_night_report(user_id, last_dates[0])
+        if raw:
+            rev = raw.get("review", {})
+            last_report = {
+                "date":                rev.get("date"),
+                "overall_quality":     rev.get("overall_night_quality"),
+                "primary_disturbance": rev.get("primary_disturbance"),
+                "verdicts": [
+                    {"type": v["type"], "verdict": v["verdict"], "confidence": v["confidence"]}
+                    for v in rev.get("verdicts", [])
+                ],
+            }
+
+    # Next-night plan (derived from policy + current session prefs, or None)
+    next_plan_summary = None
+    session_state = store.get_session(user_id)
+    if session_state and policy.nights_tracked > 0:
+        stub = NightSummary(user_id=user_id, date=_infer_date(session_state), total_ticks=0)
+        plan, _ = plan_deterministic(policy, stub, session_state.preferences)
+        next_plan_summary = {
+            "sleep_goal":                plan.sleep_goal,
+            "preferred_intervention_order": plan.preferred_intervention_order,
+            "target_wake_time":          plan.target_wake_time,
+        }
+
+    return {
+        "user_id":              user_id,
+        "nights_tracked":       policy.nights_tracked,
+        "risk_posture":         policy.risk_posture,
+        "avg_rested_score":     policy.avg_rested_score,
+        "recent_rested_scores": policy.recent_rested_scores[-7:],
+        "preferred_interventions":   preferred,
+        "discouraged_interventions": discouraged,
+        "blocked_interventions":     blocked,
+        "score_snapshot":       {iv: round(s, 3) for iv, s in sorted(scores.items())},
+        "latest_pattern_hypothesis": policy.pattern_hypothesis or None,
+        "last_review":          last_report,
+        "next_night_plan":      next_plan_summary,
+        "has_history":          policy.nights_tracked > 0,
     }
 
 

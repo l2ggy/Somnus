@@ -25,10 +25,12 @@ Public interface:
 import logging
 
 from app.models.outer_loop import (
+    DecisionTrace,
     InterventionReview,
     MorningFeedback,
     NightSummary,
     OuterLoopReport,
+    ScoreChange,
     UserPolicy,
 )
 from app.models.userstate import NightlyPlan, SharedState
@@ -79,8 +81,9 @@ def run_outer_loop(
     modes_used.append(f"review:{review_mode}")
 
     # ---- Step 3: Policy Update ------------------------------------------
-    current_policy = outer_store.load_or_default_policy(state.user_id)
-    updated_policy, policy_mode = _run_policy_update(current_policy, review, feedback, use_gpt)
+    # Hold a reference to the pre-update policy so the trace can show deltas.
+    pre_update_policy = outer_store.load_or_default_policy(state.user_id)
+    updated_policy, policy_mode = _run_policy_update(pre_update_policy, review, feedback, use_gpt)
     outer_store.save_policy(updated_policy)
     modes_used.append(f"policy:{policy_mode}")
 
@@ -90,6 +93,22 @@ def run_outer_loop(
 
     # ---- Persist night report -------------------------------------------
     outer_store.save_night_report(state.user_id, summary.date, summary, review)
+
+    # ---- Build decision trace -------------------------------------------
+    step_modes = {
+        "summary": modes_used[0].split(":")[1],
+        "review":  modes_used[1].split(":")[1],
+        "policy":  modes_used[2].split(":")[1],
+        "plan":    modes_used[3].split(":")[1],
+    }
+    trace = _build_decision_trace(
+        pre_policy=pre_update_policy,
+        post_policy=updated_policy,
+        review=review,
+        next_plan_dict=next_plan.model_dump(),
+        step_modes=step_modes,
+    )
+    _log_decision_trace(state.user_id, trace)
 
     # ---- Build report ---------------------------------------------------
     combined_mode = _summarise_mode(modes_used)
@@ -102,6 +121,7 @@ def run_outer_loop(
         user_policy=updated_policy,
         next_night_plan=next_plan.model_dump(),
         mode_used=combined_mode,
+        decision_trace=trace,
     )
 
 
@@ -219,6 +239,117 @@ def apply_policy_to_state(state: SharedState, policy: UserPolicy) -> SharedState
         "policy_guidance_note": note,
     })
     return state.model_copy(update={"nightly_plan": updated_plan})
+
+
+# ---------------------------------------------------------------------------
+# Decision trace construction
+# ---------------------------------------------------------------------------
+
+def _build_decision_trace(
+    pre_policy: UserPolicy,
+    post_policy: UserPolicy,
+    review: InterventionReview,
+    next_plan_dict: dict,
+    step_modes: dict[str, str],
+) -> DecisionTrace:
+    """
+    Build a compact, self-contained trace of what the outer loop decided.
+
+    Uses pre/post policy snapshots so callers can see exactly what changed
+    without needing to diff two full UserPolicy objects themselves.
+    """
+    # ---- Score changes -------------------------------------------------------
+    all_types = set(pre_policy.intervention_scores) | set(post_policy.intervention_scores)
+    score_changes: dict[str, ScoreChange] = {}
+
+    for iv in sorted(all_types):
+        before = round(pre_policy.intervention_scores.get(iv, 0.0), 4)
+        after  = round(post_policy.intervention_scores.get(iv, 0.0), 4)
+        delta  = round(after - before, 4)
+        if abs(delta) < 0.0001:
+            source = "unchanged"
+        elif iv in post_policy.gpt_score_adjustments:
+            source = "gpt+deterministic"
+        else:
+            source = "deterministic"
+        score_changes[iv] = ScoreChange(before=before, after=after, delta=delta, source=source)
+
+    # ---- Tomorrow's guidance buckets ----------------------------------------
+    blocked_tomorrow:     list[str] = []
+    discouraged_tomorrow: list[str] = []
+    preferred_tomorrow:   list[str] = []
+
+    for iv, sc in score_changes.items():
+        if sc.after <= _BLOCK_THRESHOLD:
+            blocked_tomorrow.append(iv)
+        elif sc.after <= _DEPRIORITIZE_THRESHOLD:
+            discouraged_tomorrow.append(iv)
+        elif sc.after >= _PREFER_THRESHOLD:
+            preferred_tomorrow.append(iv)
+
+    # Sort preferred by score descending for readability
+    preferred_tomorrow.sort(key=lambda iv: -post_policy.intervention_scores.get(iv, 0.0))
+
+    # ---- Compact verdicts ---------------------------------------------------
+    verdicts = [
+        {"type": v.type, "verdict": v.verdict, "confidence": v.confidence}
+        for v in review.verdicts
+    ]
+
+    return DecisionTrace(
+        night_quality=review.overall_night_quality,
+        verdicts=verdicts,
+        score_changes=score_changes,
+        risk_posture_before=pre_policy.risk_posture,
+        risk_posture_after=post_policy.risk_posture,
+        blocked_tomorrow=sorted(blocked_tomorrow),
+        discouraged_tomorrow=sorted(discouraged_tomorrow),
+        preferred_tomorrow=preferred_tomorrow,
+        pattern_hypothesis=post_policy.pattern_hypothesis,
+        next_night_goal=next_plan_dict.get("sleep_goal", ""),
+        next_night_order=next_plan_dict.get("preferred_intervention_order", []),
+        next_night_notes=next_plan_dict.get("notes", ""),
+        step_modes=step_modes,
+    )
+
+
+def _log_decision_trace(user_id: str, trace: DecisionTrace) -> None:
+    """Emit structured log lines that make the outer loop easy to follow in any log viewer."""
+    # What changed in scores
+    changed = {iv: sc for iv, sc in trace.score_changes.items() if sc.source != "unchanged"}
+    if changed:
+        score_str = "  ".join(
+            f"{iv}:{sc.before:+.3f}→{sc.after:+.3f}({sc.source})"
+            for iv, sc in sorted(changed.items(), key=lambda x: abs(x[1].delta), reverse=True)
+        )
+        logger.info("outer_loop user=%s score_changes: %s", user_id, score_str)
+    else:
+        logger.info("outer_loop user=%s score_changes: none (no interventions reviewed)", user_id)
+
+    # Risk posture shift
+    if trace.risk_posture_before != trace.risk_posture_after:
+        logger.info(
+            "outer_loop user=%s posture_shift: %s → %s",
+            user_id, trace.risk_posture_before, trace.risk_posture_after,
+        )
+
+    # Tomorrow's guidance
+    if trace.blocked_tomorrow:
+        logger.info("outer_loop user=%s blocked_tomorrow: %s", user_id, trace.blocked_tomorrow)
+    if trace.discouraged_tomorrow:
+        logger.info("outer_loop user=%s discouraged_tomorrow: %s", user_id, trace.discouraged_tomorrow)
+    if trace.preferred_tomorrow:
+        logger.info("outer_loop user=%s preferred_tomorrow: %s", user_id, trace.preferred_tomorrow)
+
+    # GPT pattern (if any)
+    if trace.pattern_hypothesis:
+        logger.info("outer_loop user=%s pattern_hypothesis: %s", user_id, trace.pattern_hypothesis)
+
+    # Next plan
+    logger.info(
+        "outer_loop user=%s next_night: goal=%s order=%s",
+        user_id, trace.next_night_goal, trace.next_night_order,
+    )
 
 
 # ---------------------------------------------------------------------------
