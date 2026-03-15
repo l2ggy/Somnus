@@ -1,124 +1,101 @@
-# Somnus Backend API Deployment (No Local Computer Required)
+# Somnus Backend API Deployment on Render (No Blueprint, No Local Terminal)
 
-This guide is for deploying the backend **directly from the GitHub repo** using Render.
-You do **not** need to run Docker, Python, or terminal commands on your own machine.
+This guide deploys the backend directly from GitHub using Render's **Web Service** flow.
+It avoids Render Blueprint (`render.yaml`) since Blueprint is not suitable for your free/no-cost constraint.
 
-## What this repo now includes
-
-- `Dockerfile` (backend image build)
-- `.dockerignore` (clean Docker context)
-- `render.yaml` (Render Blueprint config)
-
-With these files, Render can build and deploy the backend from GitHub only.
+You do **not** need to run Docker or terminal commands locally.
 
 ---
 
-## 1) Accounts and tools you need
-
-Because you said you do not have a computer, this process uses web UIs only.
+## 1) What you need
 
 Required:
 1. GitHub account with access to this repo
-2. Render account (https://render.com)
+2. Render account
 
 Optional:
-- OpenAI API key (only needed if you want `?mode=gpt`; deterministic mode works without it)
+- OpenAI API key (only for `?mode=gpt`; deterministic mode works without it)
 
 ---
 
-## 2) Confirm files exist in default branch
+## 2) Repo files required (already present)
 
-In GitHub web UI, confirm these files are present in the repo root:
+In the GitHub repo root, confirm:
 - `Dockerfile`
 - `.dockerignore`
-- `render.yaml`
 
-If they are in a PR branch, merge that PR first.
+Render will build from these directly.
 
 ---
 
-## 3) Deploy using Render Blueprint (repo-driven)
+## 3) Create the backend service in Render (manual UI flow)
 
-1. Log in to **Render**.
-2. Click **New +** → **Blueprint**.
-3. Connect your GitHub account (if not already connected).
+1. Sign in to Render.
+2. Click **New +** → **Web Service**.
+3. Connect GitHub (if not already connected).
 4. Select this repository.
-5. Select the branch you want to deploy (usually `main`).
-6. Render detects `render.yaml` and shows the planned web service (`somnus-api`).
-7. Click **Apply** / **Create Resources**.
+5. Choose the branch to deploy (usually `main`).
+6. Configure service:
+   - **Name**: `somnus-api`
+   - **Runtime**: `Docker`
+   - **Region**: nearest your users
+   - **Health Check Path**: `/health`
+7. Click **Create Web Service**.
 
-Render now builds from the repo `Dockerfile`, creates the service, attaches a persistent disk, and sets baseline env vars from `render.yaml`.
+Render builds image from `Dockerfile` and starts the API.
 
 ---
 
-## 4) Set secret environment variables in Render UI
+## 4) Configure environment variables in Render UI
 
-After service creation:
+Open service → **Environment** and set:
 
-1. Open Render service: `somnus-api`.
-2. Go to **Environment**.
-3. Set:
-   - `OPENAI_API_KEY` = your key (optional if deterministic-only)
-   - `OPENAI_BASE_URL` = only if using an OpenAI-compatible provider other than default
-4. Confirm existing value:
+- `SOMNUS_DB_PATH=/var/data/somnus.db`
+- `OPENAI_MODEL=gpt-4o-mini` (or preferred model)
+- `OPENAI_API_KEY=<your_key>` (optional for deterministic-only mode)
+- `OPENAI_BASE_URL=<optional_custom_provider_url>`
+
+Save changes (Render redeploys automatically).
+
+---
+
+## 5) Add persistent disk for SQLite data
+
+Without a disk, SQLite data can reset on redeploy/restart.
+
+1. Open service → **Disks**.
+2. Add disk:
+   - **Mount path**: `/var/data`
+   - Size: 1GB is enough to start
+3. Confirm env var remains:
    - `SOMNUS_DB_PATH=/var/data/somnus.db`
 
-Save changes; Render will redeploy.
-
 ---
 
-## 5) Verify persistent storage (SQLite)
+## 6) Verify backend from mobile browser
 
-In Render service settings:
-1. Open **Disks**.
-2. Confirm disk exists:
-   - Name: `somnus-data`
-   - Mount path: `/var/data`
-3. Confirm env var `SOMNUS_DB_PATH` points inside mount path (`/var/data/somnus.db`).
-
-This ensures session data persists across restarts/deploys.
-
----
-
-## 6) Get backend URL
-
-In Render service overview, copy the public URL, e.g.:
+Copy your Render URL from service overview, e.g.:
 - `https://somnus-api.onrender.com`
 
-This is your backend API base URL.
+Check:
+
+1. `https://<your-url>/health`
+   - Expect: `{"status":"ok","service":"somnus"}`
+2. `https://<your-url>/agents`
+   - Expect JSON with `agents`
+3. `https://<your-url>/docs`
+   - FastAPI Swagger UI opens
+
+Use `/docs` to test POST endpoints without local tools.
 
 ---
 
-## 7) Smoke test using only browser
+## 7) API smoke test via `/docs` (no terminal)
 
-Because you have no local machine, use browser URL checks first:
+In Swagger UI (`/docs`):
 
-### Health check
-Open in browser:
-- `https://<your-render-url>/health`
+1. Execute `POST /session/start` with:
 
-Expected JSON:
-```json
-{"status":"ok","service":"somnus"}
-```
-
-### Agent registry check
-Open:
-- `https://<your-render-url>/agents`
-
-Expected: JSON object with `agents` list.
-
-> For POST endpoint testing without local tools, use Render's API docs (`/docs`) or any web-based API client from a mobile browser.
-
----
-
-## 8) Use FastAPI Swagger UI from phone/tablet browser
-
-1. Open:
-   - `https://<your-render-url>/docs`
-2. Test `POST /session/start`:
-   - Click endpoint → **Try it out**
-   - Paste body:
 ```json
 {
   "user_id": "demo-user",
@@ -132,19 +109,19 @@ Expected: JSON object with `agents` list.
   "journal_history": []
 }
 ```
-3. Execute.
-4. Then test `GET /session/{user_id}/state` with `demo-user`.
 
-If both succeed, backend is operational.
+2. Execute `GET /session/{user_id}/state` with `demo-user`.
+
+If both succeed, backend is working.
 
 ---
 
-## 9) Frontend integration once frontend exists
+## 8) Connect frontend later
 
-Set frontend environment variable:
+When frontend exists, set:
 - `API_BASE_URL=https://<your-render-url>`
 
-Frontend should call:
+Frontend calls:
 - `POST /session/start`
 - `POST /session/{user_id}/sensor`
 - `GET /session/{user_id}/state`
@@ -152,23 +129,19 @@ Frontend should call:
 
 ---
 
-## 10) Immediate production gaps to address
+## 9) Important caveat about cost
 
-Current backend is deployable, but before real users:
-1. Add CORS middleware with explicit allowed origins.
-2. Add authentication/authorization (do not trust arbitrary user-provided `user_id`).
-3. Add rate limiting and abuse protection.
-4. Add monitoring/error reporting.
-5. Consider moving session store from SQLite to managed Redis/Postgres for scale.
+- This guide intentionally avoids Blueprint.
+- Render pricing changes over time; if no free web service is available on your account, you will need a paid plan/trial.
+
+If you need a strict zero-cost host, choose a provider with a current free web service tier and use the same `Dockerfile`.
 
 ---
 
-## 11) If you cannot do any API testing yourself
+## 10) Next production fixes (before real users)
 
-You can still launch backend from repo and hand this verification checklist to a teammate:
-1. `GET /health` returns status JSON.
-2. `POST /session/start` creates session.
-3. `GET /session/{user_id}/state` returns created session.
-4. Restart service; verify session still exists (disk persistence check).
-
-That is sufficient to confirm deployment from repo is working.
+1. Add CORS middleware (explicit frontend origins).
+2. Add authentication/authorization.
+3. Add rate limiting and abuse protection.
+4. Add monitoring/error reporting.
+5. Move from SQLite to managed Redis/Postgres if scaling.
