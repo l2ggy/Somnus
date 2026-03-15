@@ -6,5 +6,11 @@
       "src": "**/*",
       "use": "@vercel/static"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://somnus-api.onrender.com/$1"
+    }
   ]
 }
