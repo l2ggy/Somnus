@@ -24,15 +24,97 @@
 
           <section class="journal-panel" aria-label="Journal entry panel">
             <div class="journal-panel__date-row">
-              <button type="button" class="journal-panel__arrow" aria-label="Previous date">←</button>
-              <p class="journal-panel__date">Monday, March 9 2025</p>
-              <button type="button" class="journal-panel__arrow" aria-label="Next date">→</button>
+              <button type="button" class="journal-panel__arrow" id="journal-prev" aria-label="Previous date">←</button>
+              <p class="journal-panel__date" id="journal-date">No entries yet</p>
+              <button type="button" class="journal-panel__arrow" id="journal-next" aria-label="Next date">→</button>
             </div>
 
-            <p class="journal-panel__status">Somnus did not analyze your sleep this night.</p>
+            <p class="journal-panel__status" id="journal-status" aria-live="polite">Loading your sleep journal...</p>
+            <p class="journal-panel__status" id="journal-meta"></p>
           </section>
         </div>
       </section>
     </main>
+
+    <script>
+      const storageKey = 'somnus_demo_user_id';
+      const dateLabel = document.getElementById('journal-date');
+      const statusLabel = document.getElementById('journal-status');
+      const metaLabel = document.getElementById('journal-meta');
+      const prevBtn = document.getElementById('journal-prev');
+      const nextBtn = document.getElementById('journal-next');
+      let entries = [];
+      let index = 0;
+
+      function formatDate(dateStr) {
+        if (!dateStr) return 'Unknown date';
+        const parsed = new Date(`${dateStr}T00:00:00`);
+        if (Number.isNaN(parsed.getTime())) return dateStr;
+        return parsed.toLocaleDateString(undefined, {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+
+      function renderEntry() {
+        const hasEntries = entries.length > 0;
+        prevBtn.disabled = !hasEntries || index <= 0;
+        nextBtn.disabled = !hasEntries || index >= entries.length - 1;
+
+        if (!hasEntries) {
+          dateLabel.textContent = 'No entries yet';
+          statusLabel.textContent = 'No journal entries found for this user.';
+          metaLabel.textContent = '';
+          return;
+        }
+
+        const current = entries[index];
+        dateLabel.textContent = formatDate(current.date);
+        statusLabel.textContent = current.notes?.trim() || 'No notes recorded for this entry.';
+        metaLabel.textContent = `Rested score: ${current.rested_score}/10 • Awakenings reported: ${current.awakenings_reported}`;
+      }
+
+      async function loadEntries() {
+        const userId = (localStorage.getItem(storageKey) || '').trim();
+        if (!userId) {
+          statusLabel.textContent = 'Set a Demo User ID on the Menu page first.';
+          metaLabel.textContent = '';
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/session/${encodeURIComponent(userId)}/journal`);
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Request failed (${response.status})`);
+          }
+
+          entries = await response.json();
+          index = Math.max(entries.length - 1, 0);
+          renderEntry();
+        } catch (error) {
+          statusLabel.textContent = `Could not load journal entries (${error.message}).`;
+          metaLabel.textContent = '';
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+        }
+      }
+
+      prevBtn.addEventListener('click', () => {
+        index = Math.max(0, index - 1);
+        renderEntry();
+      });
+
+      nextBtn.addEventListener('click', () => {
+        index = Math.min(entries.length - 1, index + 1);
+        renderEntry();
+      });
+
+      loadEntries();
+    </script>
   </body>
 </html>

@@ -157,7 +157,6 @@
             <section class="journal-quiz-step" data-journal-step="2" hidden>
               <h3 class="begin-sleep-step__title">Any other notes?</h3>
               <div class="journal-quiz-options" role="group" aria-label="Additional notes">
-                <button type="button" class="journal-choice" data-field="notes_choice" data-value="talk_to_somnus">Talk to Somnus</button>
                 <button type="button" class="journal-choice" data-field="notes_choice" data-value="no_thanks">No thanks</button>
               </div>
               <textarea id="journal-notes" class="journal-notes" name="journal_notes" placeholder="Optional notes for Somnus"></textarea>
@@ -351,8 +350,23 @@
       function collectJournalPayload() {
         const userId = getStoredUserId();
         const notes = document.getElementById('journal-notes').value.trim();
+        const today = new Date();
+        const date = today.toISOString().slice(0, 10);
+        const restedScoreMap = {
+          rested: 9,
+          a_little_groggy: 6,
+          still_tired: 3,
+        };
+        const awakeningsReportedMap = {
+          great: 0,
+          okay: 1,
+          rough: 3,
+        };
 
         return {
+          date,
+          rested_score: restedScoreMap[journalAnswers.morning_feeling] ?? 5,
+          awakenings_reported: awakeningsReportedMap[journalAnswers.sleep_quality] ?? 1,
           mood: journalAnswers.morning_feeling,
           sleep_quality: journalAnswers.sleep_quality,
           notes_choice: journalAnswers.notes_choice,
@@ -496,6 +510,7 @@
           }
 
           journalStatus.textContent = 'Journal entry saved.';
+          window.location.assign('/sleep-journal.html');
         } catch (error) {
           journalStatus.textContent = `Could not save journal entry (${error.message}).`;
         }
