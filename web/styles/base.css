@@ -7,6 +7,7 @@
   --motion-duration-fast: 420ms;
   --motion-duration-base: 620ms;
   --motion-duration-slow: 860ms;
+  --motion-duration-slower: 1100ms;
   --motion-ease-pop: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -100,4 +101,25 @@ img {
     transform: none;
     filter: none;
   }
+}
+
+.asset-fade {
+  opacity: 0;
+  transition: opacity var(--motion-duration-slower) ease-out, filter var(--motion-duration-base) ease-out, transform var(--motion-duration-base) ease-out;
+}
+
+.asset-fade--ready {
+  opacity: 1;
+}
+
+button,
+a {
+  transition: transform 220ms var(--motion-ease-pop), opacity 220ms ease, color 220ms ease, background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+button:hover,
+button:focus-visible,
+a:hover,
+a:focus-visible {
+  transform: translateY(-1px);
 }
