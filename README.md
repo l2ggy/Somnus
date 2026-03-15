@@ -1,53 +1,135 @@
-# Somnus
-Somnus is a personalized AI sleep strategist that learns from biometrics, environmental data, and sleep journals to intervene in real time, helping users sleep better and wake more smoothly. 
+# Somnus 🌙
 
-Instead of only analyzing sleep after it happens, the system actively watches biometric signals and environmental noise while the user is asleep, predicts disturbances, and adjusts conditions to improve sleep quality. For example, if Somnus detects that the user is at risk of waking up before their target alarm time, it can generate interventions such as calming music or brown, white, or pink noise, as well as rain, waterfall, or wave soundscapes. It can also make waking up smoother by gradually introducing sound instead of using an abrupt alarm, easing the transition out of deep sleep. After sleep, Somnus prompts the user to complete a Sleep Journal, where they rate and review their experience. This feedback helps the model update and improve according to the user’s personalized preferences. Over time, Somnus generates increasingly effective sleep plans tailored to the individual.
+**Somnus** is an AI sleep strategist that monitors live sleep signals, predicts disturbances before they wake the user, and responds with personalized interventions in real time.
 
-Submitted as part of [GenAI Genesis Hackathon 2026](https://genai-genesis-2026.devpost.com/?_gl=1*1abvi59*_gcl_au*OTc1NjQzNzk4LjE3NzM0NjY0MTg.*_ga*MTk1ODM0NzUyNi4xNzU4NDI4MTg4*_ga_0YHJK3Y10M*czE3NzM1MzYzNTEkbzEyJGcxJHQxNzczNTM2NDQwJGo2MCRsMCRoMA..). 
+Instead of only generating post-hoc sleep analytics, Somnus runs an **active overnight control loop**: it ingests sensor data, infers sleep state, detects risk, selects an intervention, and adapts over time using morning journal feedback.
 
-Try it out: 
-- [Devpost](https://devpost.com/software/somnus-udcfsk)
-- [Youtube Demo]()
-- [Canva Presentation](https://www.canva.com/design/DAHD6B1R3jA/Z2kF_LeWoFk4smkhWoUUJw/view?utm_content=DAHD6B1R3jA&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hdf3b9a7fe8)
+> Built for the [GenAI Genesis Hackathon 2026](https://genai-genesis-2026.devpost.com/?_gl=1*1abvi59*_gcl_au*OTc1NjQzNzk4LjE3NzM0NjY0MTg.*_ga*MTk1ODM0NzUyNi4xNzU4NDI4MTg4*_ga_0YHJK3Y10M*czE3NzM1MzYzNTEkbzEyJGcxJHQxNzczNTM2NDQwJGo2MCRsMCRoMA..).
 
-Deployed API: https://somnus-gamma.vercel.app/
-- https://somnus-api.onrender.com
+---
 
-fastapi uvicorn pydantic openai python-dotenv
+## Why this matters
 
-## Workflow
-Workload was divided as follows:
-- Boris: AI/ML & FrontendLead -- model architecture, training, evaluation, and optimization
-- Jessica: Data & Backend Lead -- data collection, database management, API development, and integration
-- Nicole: Product & submission lead -- presentation, demo video, design concept, documentation
+Sleep apps usually tell users what went wrong **after** the night ends.
+Somnus is designed to help **during** the night:
 
-**Boris**
-- Led Sleep Intelligence + Personalization implementation across `app/agents/intelligence/` (sensor interpretation, sleep-state inference, disturbance detection, intervention selection, pre-sleep strategy, and morning reflection)
-- Built and tuned the core decision pipeline for real-time night monitoring using `sensor_interpreter.py`, `sleep_state.py`, `disturbance.py`, and `intervention.py`
-- Implemented personalization logic in `strategist.py` and `journal_reflection.py`, connecting nightly planning with morning feedback for continuous adaptation
-- Helped define and maintain agent contract boundaries and merge-safety rules for intelligence components via shared-state/contract architecture (`app/pipeline_contracts.py`, `app/models/userstate.py`)
+- Detects threats to sleep continuity (noise spikes, movement, wake risk)
+- Applies context-aware interventions (brown/pink/white noise, rain/waves, breathing pace, gradual wake)
+- Learns user preferences from journal feedback to improve future nights
 
-**Jessica**
-- Led Backend + Orchestration development for the FastAPI service in `app/main.py`, including API routes and session lifecycle handling
-- Implemented backend ingestion and validation flow at the API boundary in `app/agents/backend/intake.py` to normalize sensor payloads before processing
-- Built core runtime coordination in `app/orchestrator.py`, including agent sequencing for pre-sleep planning, night ticks, and morning reflection
-- Developed persistence/data-layer infrastructure in `app/store.py` and integrated backend contracts needed for session state management and API reliability
+The goal is simple: **fewer disruptions, smoother wakeups, and personalized sleep quality gains over time**.
 
-**Nicole**
-- Made canva presentation and directed demo video
-- Lead product design (see `assets-and-branding/brand-kit/WebappDesignConcept.pdf`)
-- Designed logo and brand assets, fetched audio files (see `assets-and-branding/` folder and `web/assets/audio` folder)
-- General bookkeeping and documentation of README, Devpost, etc.
+---
 
-## Future Improvements 
-- Scale from web app to native
-- Integrate physical interventions (e.g. smart watch vibration) to be more accessible 
+## Live links
 
-## Documentation
+- **Frontend (Vercel):** https://somnus-gamma.vercel.app/
+- **Backend API (Render):** https://somnus-api.onrender.com
+- **Devpost:** https://devpost.com/software/somnus-udcfsk
+- **Canva presentation:** https://www.canva.com/design/DAHD6B1R3jA/Z2kF_LeWoFk4smkhWoUUJw/view?utm_content=DAHD6B1R3jA&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hdf3b9a7fe8
+- **Demo video:** _link pending update_
+
+---
+
+## What Somnus does (end-to-end)
+
+### 1) Pre-sleep planning
+Before bedtime, Somnus builds a nightly strategy from user preferences and history.
+
+### 2) Real-time overnight loop
+On each sensor tick, the backend executes:
+
+1. Sensor intake + validation
+2. Signal interpretation
+3. Sleep phase inference
+4. Disturbance detection
+5. Intervention selection
+6. State persistence
+
+### 3) Morning reflection + personalization
+User journal feedback is converted into reflection insights and preference updates that influence future planning.
+
+---
+
+## Technical architecture
+
+Somnus is implemented as an **agentic FastAPI backend** with a shared-state contract:
+
+- `app/main.py` — API routes and lifecycle
+- `app/orchestrator.py` — pipeline sequencing
+- `app/agents/backend/` — API-boundary ingestion
+- `app/agents/intelligence/` — interpretation, sleep state, disturbance, intervention, planning, reflection
+- `app/models/` — shared Pydantic domain models
+- `app/store.py` — SQLite-backed session state
+
+The repo also includes a standalone **world-model simulation layer** (`simulation/`, `agents/`) for trajectory-based planning and hybrid LLM/rule-based action selection research.
+
+---
+
+## Model usage
+
+Somnus supports deterministic and LLM-assisted modes:
+
+- **Deterministic mode** for stable, low-latency baseline behavior
+- **GPT mode** for richer planning/reflection language with safe fallback
+
+**Model used in deployment:** `openai/gpt-oss-120b` (GPT OSS 120b) via an OpenAI-compatible endpoint.
+
+---
+
+## API highlights
+
+- `POST /session/start` — start/replace a session and generate nightly plan
+- `POST /session/{user_id}/sensor` — process one overnight sensor tick
+- `GET /session/{user_id}/state` — fetch live shared state
+- `POST /session/{user_id}/journal` — submit morning journal and run reflection
+- `GET /health` — liveness check
+- `GET /docs` — interactive Swagger UI
+
+Both planning and reflection endpoints support `?mode=deterministic|gpt`.
+
+---
+
+## Local development
+
+```bash
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Then open:
+
+- API docs: `http://localhost:8000/docs`
+- Health check: `http://localhost:8000/health`
+
+---
+
+## Team and contributions
+
+- **Boris — AI/ML & Frontend Lead**
+  - Built sleep intelligence and personalization logic across `app/agents/intelligence/`
+  - Developed key real-time decision components and planning/reflection integration
+- **Jessica — Data & Backend Lead**
+  - Built FastAPI backend routes, orchestration flow, ingestion, and persistence
+  - Implemented session lifecycle and API integration contracts
+- **Nicole — Product & Submission Lead**
+  - Led product narrative, branding, presentation, and demo direction
+  - Maintained project-level documentation and submission assets
+
+---
+
+## Future roadmap
+
+- Expand from web experience to native mobile app
+- Add additional physical/hardware interventions (e.g., smartwatch haptics)
+- Deepen long-term personalization with durable user preference memory
+
+---
+
+## Documentation map
+
+- Architecture + API reference: `docs/ARCHITECTURE.md`
+- World-model technical notes: `docs/world_model.md`
+- World-model change log: `docs/CHANGES.md`
 - Project proposal: `PROJECT_PROPOSAL.md`
 - Web/mobile deployment plan: `DEPLOYMENT_WEB_MOBILE.md`
-- Backend deployment runbook (Render Web Service, no-local terminal): `docs/BACKEND_DEPLOY_RENDER.md`
-- Frontend deployment setup (Vercel, no-local terminal): `docs/FRONTEND_DEPLOY_VERCEL.md`
-
-## Resources and References
-
