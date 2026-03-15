@@ -56,8 +56,12 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: clamp(1.1rem, 4vw, 1.5rem);
   text-align: center;
+}
+
+.menu-screen__body--page {
+  justify-content: flex-start;
+  padding-top: clamp(5.5rem, 16vh, 10rem);
 }
 
 .menu-screen__question {
@@ -65,12 +69,13 @@
   color: var(--color-white);
   font-size: clamp(1.25rem, 5vw, 2rem);
   font-weight: 500;
+  margin-bottom: clamp(1.6rem, 4.5vw, 2.5rem);
 }
 
 .menu-screen__options {
   width: min(100%, 33rem);
   display: grid;
-  gap: clamp(0.85rem, 2.4vw, 1rem);
+  gap: clamp(1.15rem, 3.3vw, 1.45rem);
 }
 
 .menu-screen__option {
@@ -85,6 +90,8 @@
   padding: clamp(0.8rem, 2.8vw, 1.05rem) 1.25rem;
   cursor: pointer;
   transition: background-color 180ms ease, border-color 180ms ease;
+  text-decoration: none;
+  text-align: center;
 }
 
 .menu-screen__option:hover,
@@ -96,6 +103,19 @@
 .menu-screen__option:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.4);
   outline-offset: 2px;
+}
+
+.menu-screen__title {
+  margin: 0;
+  color: var(--color-white);
+  font-size: clamp(1.7rem, 6vw, 2.5rem);
+  font-weight: 600;
+}
+
+.menu-screen__subtitle {
+  margin: clamp(0.8rem, 2.8vw, 1.1rem) 0 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(1rem, 3.6vw, 1.35rem);
 }
 
 @media (min-width: 768px) {
@@ -110,5 +130,9 @@
 
   .menu-screen__body {
     padding-top: 6vh;
+  }
+
+  .menu-screen__body--page {
+    padding-top: 11vh;
   }
 }
