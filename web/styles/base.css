@@ -24,7 +24,7 @@ body {
 body {
   min-height: 100dvh;
   font-family: var(--font-primary);
-  background-color: #271669;
+  background-color: #5a5b9b;
   color: var(--color-white);
 }
 

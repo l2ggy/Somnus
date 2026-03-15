@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Somnus | About Somnus</title>
+    <link rel="stylesheet" href="/styles/base.css" />
+    <link rel="stylesheet" href="/styles/menu.css" />
+  </head>
+  <body>
+    <main class="menu-screen" aria-label="About Somnus screen">
+      <img class="menu-screen__background" src="/assets/BackgroundPortrait.svg" alt="" aria-hidden="true" />
+      <section class="menu-screen__content" aria-label="About Somnus">
+        <header class="menu-screen__header anim-pop-in" style="--anim-delay: 120ms">
+          <div class="menu-screen__header-top">
+            <img class="menu-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="286" height="88" />
+            <a class="menu-screen__menu-link" href="/menu.html">← Menu</a>
+          </div>
+          <div class="menu-screen__divider" aria-hidden="true"></div>
+        </header>
+
+        <div class="menu-screen__body menu-screen__body--page anim-pop-in" style="--anim-delay: 220ms">
+          <h1 class="menu-screen__title">About Somnus</h1>
+
+          <div class="about-screen__content">
+            <p>
+              Somnus is a personalized AI sleep strategist that learns from biometrics, environmental data, and sleep journals to intervene in real time, helping users sleep better and wake more smoothly.
+            </p>
+
+            <p>
+              Instead of only analyzing sleep after it happens, the system actively watches biometric signals and environmental noise while the user is asleep, predicts disturbances, and adjusts conditions to improve sleep quality. For example, if Somnus detects that the user is at risk of waking up before their target alarm time, it can generate interventions such as calming music or brown, white, or pink noise, as well as rain, waterfall, or wave soundscapes. It can also make waking up smoother by gradually introducing sound instead of using an abrupt alarm, easing the transition out of deep sleep. After sleep, Somnus prompts the user to complete a Sleep Journal, where they rate and review their experience. This feedback helps the model update and improve according to the user’s personalized preferences. Over time, Somnus generates increasingly effective sleep plans tailored to the individual.
+            </p>
+
+            <p class="about-screen__muted">Submitted as part of GenAI Genesis Hackathon 2026.</p>
+
+            <h2 class="about-screen__section-title">Links</h2>
+            <div class="about-screen__links" aria-label="Links">
+              <a href="https://github.com/l2ggy/Somnus" target="_blank" rel="noreferrer" aria-label="GitHub">GitHub</a>
+              <span aria-label="Devpost not ready">Devpost (soon)</span>
+              <a href="#" aria-label="YouTube Demo">YouTube Demo</a>
+            </div>
+
+            <h2 class="about-screen__section-title">Our Team:</h2>
+            <div class="about-screen__team" aria-label="Our Team">
+              <span>Boris</span>
+              <span>Jessica</span>
+              <span>Nicole</span>
+            </div>
+
+            <p class="about-screen__cta-label">Try it out!</p>
+            <a class="menu-screen__option about-screen__cta" href="/begin-sleep.html">Begin Sleep</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
