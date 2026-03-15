@@ -16,6 +16,8 @@ Demo/example endpoints (stateless, no session store):
   GET /journal/example   → reflection on a hardcoded completed-night state
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Query
 
 from app import orchestrator, store
@@ -30,10 +32,17 @@ from app.models.userstate import (
     UserPreferences,
 )
 
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    store.init_db()
+    yield
+
+
 app = FastAPI(
     title="Somnus",
     description="Agentic sleep assistant — shared-state backend",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # ---------------------------------------------------------------------------
