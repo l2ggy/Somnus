@@ -303,6 +303,9 @@
 
 
 .sleep-session-screen__telemetry {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
   gap: 0.35rem;
   width: min(100%, 28rem);
@@ -310,6 +313,41 @@
   border-radius: 0.8rem;
   background: rgba(24, 19, 57, 0.32);
   padding: 0.8rem 0.95rem;
+  transition: border-color var(--motion-duration-base) ease, box-shadow var(--motion-duration-base) ease;
+}
+
+.sleep-session-screen__telemetry::before,
+.sleep-session-screen__telemetry::after {
+  content: '';
+  position: absolute;
+  inset: -38% -30%;
+  pointer-events: none;
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 300ms ease;
+}
+
+.sleep-session-screen__telemetry::before {
+  background: radial-gradient(circle at 20% 20%, rgba(255, 109, 140, 0.42), rgba(255, 109, 140, 0));
+}
+
+.sleep-session-screen__telemetry::after {
+  background: radial-gradient(circle at 80% 70%, rgba(119, 234, 255, 0.3), rgba(119, 234, 255, 0));
+}
+
+.sleep-session-screen__telemetry.is-intervening {
+  border-color: rgba(255, 130, 153, 0.75);
+  box-shadow: 0 0 0.8rem rgba(255, 95, 131, 0.4);
+}
+
+.sleep-session-screen__telemetry.is-intervening::before,
+.sleep-session-screen__telemetry.is-intervening::after {
+  opacity: 1;
+  animation: telemetry-fluid-wave 4s ease-in-out infinite;
+}
+
+.sleep-session-screen__telemetry.is-intervening::after {
+  animation-delay: -1.3s;
 }
 
 .sleep-session-screen__db,
@@ -693,5 +731,30 @@
 
   .begin-sleep-btn {
     width: 100%;
+  }
+}
+
+
+@keyframes telemetry-fluid-wave {
+  0% {
+    transform: translate(-10%, -6%) scale(0.92);
+    filter: blur(14px);
+  }
+  50% {
+    transform: translate(8%, 10%) scale(1.08);
+    filter: blur(18px);
+  }
+  100% {
+    transform: translate(-6%, -10%) scale(0.95);
+    filter: blur(15px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sleep-session-screen__telemetry,
+  .sleep-session-screen__telemetry::before,
+  .sleep-session-screen__telemetry::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

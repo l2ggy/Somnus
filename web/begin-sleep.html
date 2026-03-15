@@ -109,10 +109,10 @@
         <img class="sleep-session-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="320" height="100" />
         <p class="sleep-session-screen__title">Analyzing your sleep....</p>
         <p class="sleep-session-screen__subtitle" id="wake-time-summary">Wake-up time set to 7:30 AM</p>
-        <div class="sleep-session-screen__telemetry" aria-live="polite">
-          <p class="sleep-session-screen__db" id="live-decibel">Live loudness: -- dB</p>
-          <p class="sleep-session-screen__db-max" id="window-decibel">10s peak: -- dB</p>
-          <p class="sleep-session-screen__intervention" id="intervention-status">Intervention: none</p>
+        <div class="sleep-session-screen__telemetry" id="sleep-telemetry" aria-live="polite">
+          <p class="sleep-session-screen__db" id="live-decibel">Current room sound: -- dB</p>
+          <p class="sleep-session-screen__db-max" id="window-decibel">Loudest moment (last 10s): -- dB</p>
+          <p class="sleep-session-screen__intervention" id="intervention-status">Somnus is monitoring quietly</p>
         </div>
         <button class="sleep-session-screen__action" type="button" id="end-session">End sleep session</button>
         <button class="sleep-session-screen__cancel" type="button" id="cancel-session">Tap to cancel</button>
@@ -202,6 +202,7 @@
       const liveDecibelLabel = document.getElementById('live-decibel');
       const windowDecibelLabel = document.getElementById('window-decibel');
       const interventionStatusLabel = document.getElementById('intervention-status');
+      const sleepTelemetryPanel = document.getElementById('sleep-telemetry');
 
       const journalForm = document.getElementById('journal-quiz-form');
       const journalSteps = Array.from(document.querySelectorAll('.journal-quiz-step'));
@@ -296,11 +297,24 @@
 
       function renderAudioTelemetry() {
         if (liveDecibelLabel) {
-          liveDecibelLabel.textContent = `Live loudness: ${formatDecibel(currentDb)} dB`;
+          liveDecibelLabel.textContent = `Current room sound: ${formatDecibel(currentDb)} dB`;
         }
         if (windowDecibelLabel) {
-          windowDecibelLabel.textContent = `10s peak: ${formatDecibel(sessionPeakDb)} dB`;
+          windowDecibelLabel.textContent = `Loudest moment (last 10s): ${formatDecibel(sessionPeakDb)} dB`;
         }
+      }
+
+      function setInterventionVisualState(isActive) {
+        if (!sleepTelemetryPanel) return;
+        sleepTelemetryPanel.classList.toggle('is-intervening', Boolean(isActive));
+      }
+
+      function formatInterventionLabel(type) {
+        if (!type) return 'support mode';
+        return type
+          .split('_')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
       }
 
       function renderIntervention(statePayload) {
@@ -309,11 +323,13 @@
         if (!interventionStatusLabel) return;
 
         if (type && type !== 'none') {
-          interventionStatusLabel.textContent = `Intervention active: ${type}`;
+          interventionStatusLabel.textContent = `Somnus is actively helping (${formatInterventionLabel(type)})`;
+          setInterventionVisualState(true);
           return;
         }
 
-        interventionStatusLabel.textContent = 'Intervention: none';
+        interventionStatusLabel.textContent = 'Somnus is monitoring quietly';
+        setInterventionVisualState(false);
       }
 
       async function sendSensorAndRefreshState(userId, peakDb) {
@@ -397,7 +413,8 @@
               await sendSensorAndRefreshState(userId, peakForWindow);
             } catch (error) {
               if (interventionStatusLabel) {
-                interventionStatusLabel.textContent = `Intervention status unavailable (${error.message}).`;
+                interventionStatusLabel.textContent = `Unable to refresh support status (${error.message}).`;
+                setInterventionVisualState(false);
               }
             }
           }, 10000);
@@ -406,7 +423,7 @@
             liveDecibelLabel.textContent = `Microphone unavailable (${error.message}).`;
           }
           if (windowDecibelLabel) {
-            windowDecibelLabel.textContent = '10s peak: unavailable';
+            windowDecibelLabel.textContent = 'Loudest moment (last 10s): unavailable';
           }
         }
       }
@@ -438,6 +455,7 @@
         }
         currentDb = -Infinity;
         sessionPeakDb = -Infinity;
+        setInterventionVisualState(false);
       }
 
       function collectPayload() {
