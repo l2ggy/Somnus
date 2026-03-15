@@ -36,7 +36,7 @@ Workload was divided as follows:
 **Nicole**
 - Made canva presentation and directed demo video
 - Lead product design (see `assets-and-branding/brand-kit/WebappDesignConcept.pdf`)
-- Designed logo and branding assets (see `assets-and-branding/` folder)
+- Designed logo and brand assets, fetched audio files (see `assets-and-branding/` folder and `web/assets/audio` folder)
 - General bookkeeping and documentation of README, Devpost, etc.
 
 ## Future Improvements 
