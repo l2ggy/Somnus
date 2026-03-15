@@ -109,6 +109,10 @@
         <img class="sleep-session-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="320" height="100" />
         <p class="sleep-session-screen__title">Analyzing your sleep....</p>
         <p class="sleep-session-screen__subtitle" id="wake-time-summary">Wake-up time set to 7:30 AM</p>
+        <p class="sleep-session-screen__meter" id="decibel-readout">Current loudness: -- dB</p>
+        <p class="sleep-session-screen__meter sleep-session-screen__meter--subtle" id="decibel-peak-readout">10s peak: -- dB</p>
+        <p class="sleep-session-screen__meter" id="intervention-status">Intervention: none</p>
+        <p class="sleep-session-screen__meter sleep-session-screen__meter--subtle" id="mic-status">Microphone access is required during sleep session.</p>
         <button class="sleep-session-screen__action" type="button" id="end-session">End sleep session</button>
         <button class="sleep-session-screen__cancel" type="button" id="cancel-session">Tap to cancel</button>
       </section>
@@ -194,6 +198,10 @@
       const cancelSessionBtn = document.getElementById('cancel-session');
       const endSessionBtn = document.getElementById('end-session');
       const startJournalQuizBtn = document.getElementById('start-journal-quiz');
+      const decibelReadout = document.getElementById('decibel-readout');
+      const decibelPeakReadout = document.getElementById('decibel-peak-readout');
+      const interventionStatus = document.getElementById('intervention-status');
+      const micStatus = document.getElementById('mic-status');
 
       const journalForm = document.getElementById('journal-quiz-form');
       const journalSteps = Array.from(document.querySelectorAll('.journal-quiz-step'));
@@ -212,6 +220,14 @@
         sleep_quality: '',
         notes_choice: '',
       };
+      let micStream = null;
+      let audioContext = null;
+      let analyser = null;
+      let audioDataArray = null;
+      let loudnessAnimationFrame = null;
+      let sensorUploadInterval = null;
+      let recentDecibelWindow = [];
+      let latestDbFs = -100;
 
       const flowText = [
         'Set wake-up time → Set wake-up audio → Set sleep profile → Begin sleep',
@@ -257,7 +273,11 @@
         if (state === 'sleeping') {
           sleepSessionScreen.hidden = false;
           document.body.classList.add('sleep-session-active');
+          startSleepSessionMonitoring();
+          return;
         }
+
+        stopSleepSessionMonitoring();
 
         if (state === 'post-sleep') {
           postSleepScreen.hidden = false;
@@ -267,6 +287,159 @@
         if (state === 'journal-quiz') {
           journalQuizScreen.hidden = false;
           document.body.classList.add('journal-quiz-active');
+        }
+      }
+
+      function calculateDbFromAnalyser() {
+        if (!analyser || !audioDataArray) return -100;
+        analyser.getFloatTimeDomainData(audioDataArray);
+
+        let sumSquares = 0;
+        for (let index = 0; index < audioDataArray.length; index += 1) {
+          const sample = audioDataArray[index];
+          sumSquares += sample * sample;
+        }
+
+        const rms = Math.sqrt(sumSquares / audioDataArray.length);
+        if (rms <= 0) return -100;
+
+        return Math.max(-100, 20 * Math.log10(rms));
+      }
+
+      function toEstimatedDecibel(dbFs) {
+        return Math.min(120, Math.max(0, dbFs + 100));
+      }
+
+      function renderLoudnessReadout() {
+        if (!analyser) return;
+
+        latestDbFs = calculateDbFromAnalyser();
+        const estimatedDb = toEstimatedDecibel(latestDbFs);
+
+        if (decibelReadout) {
+          decibelReadout.textContent = `Current loudness: ${estimatedDb.toFixed(1)} dB`;
+        }
+
+        recentDecibelWindow.push(estimatedDb);
+        if (recentDecibelWindow.length > 600) {
+          recentDecibelWindow.shift();
+        }
+
+        loudnessAnimationFrame = requestAnimationFrame(renderLoudnessReadout);
+      }
+
+      async function sendSensorAndRefreshState() {
+        const userId = getStoredUserId();
+        if (!userId) return;
+
+        const tenSecondPeak = recentDecibelWindow.length
+          ? Math.max(...recentDecibelWindow)
+          : toEstimatedDecibel(latestDbFs);
+
+        if (decibelPeakReadout) {
+          decibelPeakReadout.textContent = `10s peak: ${tenSecondPeak.toFixed(1)} dB`;
+        }
+
+        try {
+          await fetch(`/api/session/${encodeURIComponent(userId)}/sensor`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ noise_db: tenSecondPeak }),
+          });
+
+          const stateResponse = await fetch(`/api/session/${encodeURIComponent(userId)}/state`);
+          if (!stateResponse.ok) {
+            throw new Error(`State request failed (${stateResponse.status})`);
+          }
+
+          const state = await stateResponse.json();
+          const interventionType = state?.active_intervention?.type;
+          const isIntervening = interventionType && interventionType !== 'none';
+
+          if (interventionStatus) {
+            interventionStatus.textContent = isIntervening
+              ? `Intervention active: ${interventionType}`
+              : 'Intervention: none';
+          }
+        } catch (error) {
+          if (micStatus) {
+            micStatus.textContent = `Live sync issue: ${error.message}`;
+          }
+        } finally {
+          recentDecibelWindow = [];
+        }
+      }
+
+      async function startSleepSessionMonitoring() {
+        if (sensorUploadInterval || micStream) return;
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+          if (micStatus) {
+            micStatus.textContent = 'This browser does not support microphone capture.';
+          }
+          return;
+        }
+
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const source = audioContext.createMediaStreamSource(micStream);
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 2048;
+          source.connect(analyser);
+          audioDataArray = new Float32Array(analyser.fftSize);
+
+          recentDecibelWindow = [];
+          latestDbFs = -100;
+          if (micStatus) {
+            micStatus.textContent = 'Microphone active. Sending peak loudness every 10 seconds.';
+          }
+
+          renderLoudnessReadout();
+          sensorUploadInterval = setInterval(sendSensorAndRefreshState, 10000);
+        } catch (error) {
+          if (micStatus) {
+            micStatus.textContent = `Could not start microphone monitoring (${error.message}).`;
+          }
+        }
+      }
+
+      function stopSleepSessionMonitoring() {
+        if (sensorUploadInterval) {
+          clearInterval(sensorUploadInterval);
+          sensorUploadInterval = null;
+        }
+
+        if (loudnessAnimationFrame) {
+          cancelAnimationFrame(loudnessAnimationFrame);
+          loudnessAnimationFrame = null;
+        }
+
+        if (micStream) {
+          micStream.getTracks().forEach((track) => track.stop());
+          micStream = null;
+        }
+
+        if (audioContext) {
+          audioContext.close();
+          audioContext = null;
+        }
+
+        analyser = null;
+        audioDataArray = null;
+        recentDecibelWindow = [];
+
+        if (decibelReadout) {
+          decibelReadout.textContent = 'Current loudness: -- dB';
+        }
+        if (decibelPeakReadout) {
+          decibelPeakReadout.textContent = '10s peak: -- dB';
+        }
+        if (interventionStatus) {
+          interventionStatus.textContent = 'Intervention: none';
+        }
+        if (micStatus) {
+          micStatus.textContent = 'Microphone access is required during sleep session.';
         }
       }
 
