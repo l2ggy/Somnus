@@ -39,8 +39,19 @@
     <script>
       const introScreen = document.getElementById('intro-screen');
 
+      let isNavigatingFromHome = false;
+
       function goToMenuScreen() {
-        window.location.href = '/menu.html';
+        if (isNavigatingFromHome) {
+          return;
+        }
+
+        isNavigatingFromHome = true;
+        document.body.classList.add('is-navigating-from-home');
+
+        window.setTimeout(() => {
+          window.location.href = '/menu.html';
+        }, 360);
       }
 
 
