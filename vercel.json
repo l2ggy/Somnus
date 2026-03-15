@@ -9,8 +9,12 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "^/$",
       "dest": "/web/index.html"
+    },
+    {
+      "src": "^/(.*)$",
+      "dest": "/web/$1"
     }
   ]
 }
