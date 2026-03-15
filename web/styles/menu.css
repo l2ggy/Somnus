@@ -18,9 +18,12 @@
   object-fit: cover;
   object-position: center;
   z-index: 0;
+  transition: filter 240ms ease, transform 240ms ease, opacity 240ms ease;
 }
 
 .menu-screen__content {
+  transition: opacity 180ms ease;
+
   position: relative;
   z-index: 1;
   min-height: 100vh;
@@ -260,6 +263,84 @@
   opacity: 1;
 }
 
+
+
+.sleep-session-screen[hidden],
+.journal-intro-screen[hidden],
+.journal-quiz-screen[hidden] {
+  display: none !important;
+}
+
+.sleep-session-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+}
+
+.sleep-session-screen__logo {
+  width: clamp(14rem, 70vw, 20rem);
+  height: auto;
+  margin-bottom: clamp(0.8rem, 3.2vh, 1.4rem);
+}
+
+.sleep-session-screen__title {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.98);
+  font-size: clamp(1.55rem, 4.8vw, 2.2rem);
+  font-style: italic;
+  font-weight: 600;
+}
+
+.sleep-session-screen__subtitle {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(1rem, 3.5vw, 1.35rem);
+}
+
+.sleep-session-screen__cancel {
+  margin-top: 0.45rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  font: inherit;
+  font-size: clamp(1rem, 3.3vw, 1.22rem);
+  font-style: italic;
+  cursor: pointer;
+}
+
+.sleep-session-screen__cancel:hover,
+.sleep-session-screen__cancel:focus-visible {
+  color: var(--color-white);
+}
+
+.sleep-session-active .menu-screen__background {
+  filter: brightness(0.36) blur(3px);
+  transform: scale(1.04);
+}
+
+.sleep-session-active .menu-screen::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 40%, rgba(132, 129, 182, 0.22), rgba(22, 16, 58, 0.72) 70%);
+}
+
+.sleep-session-active .menu-screen__content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
 .begin-sleep-panel {
   min-height: auto;
 }
@@ -439,6 +520,10 @@
 
 
 @media (max-width: 520px) {
+  .sleep-session-screen {
+    gap: 0.8rem;
+  }
+
   .begin-sleep-choices {
     grid-template-columns: 1fr;
   }
@@ -449,5 +534,156 @@
 
   .begin-sleep-btn {
     width: 100%;
+  }
+}
+
+/* richer motion + smooth background loading */
+.menu-screen__background {
+  animation: fade-in 900ms ease-out both;
+}
+
+.menu-screen__logo,
+.menu-screen__divider,
+.menu-screen__title,
+.menu-screen__question,
+.journal-panel,
+.begin-sleep-step,
+.begin-sleep-panel__progress,
+.begin-sleep-preview,
+.begin-sleep-status {
+  animation: fade-in 650ms ease-out both;
+}
+
+.menu-screen__option,
+.menu-screen__menu-link,
+.begin-sleep-field input,
+.begin-sleep-field select,
+.journal-choice,
+.sleep-session-screen__action,
+.sleep-session-screen__cancel,
+.journal-textarea {
+  transition: transform 200ms ease, background-color 220ms ease, border-color 220ms ease, color 220ms ease, box-shadow 220ms ease, opacity 200ms ease;
+}
+
+.menu-screen__option:hover,
+.menu-screen__option:focus-visible,
+.journal-choice:hover,
+.journal-choice:focus-visible,
+.sleep-session-screen__action:hover,
+.sleep-session-screen__action:focus-visible,
+.sleep-session-screen__cancel:hover,
+.sleep-session-screen__cancel:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(7, 4, 28, 0.2);
+}
+
+.sleep-session-screen {
+  animation: fade-in 360ms ease-out both;
+}
+
+.sleep-session-screen__action {
+  border: 1.7px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-white);
+  font: inherit;
+  font-size: clamp(1rem, 3.2vw, 1.18rem);
+  padding: 0.55rem 1.25rem;
+  cursor: pointer;
+}
+
+.journal-intro-screen,
+.journal-quiz-screen {
+  position: relative;
+  z-index: 3;
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  padding: clamp(1.25rem, 4vw, 2.75rem);
+  animation: fade-in 420ms ease-out both;
+}
+
+.journal-intro-screen__body {
+  max-width: 28rem;
+  margin: clamp(4rem, 16vh, 10rem) auto 0;
+  text-align: center;
+  display: grid;
+  gap: 1.2rem;
+}
+
+.journal-intro-screen__headline {
+  margin: 0;
+  font-size: clamp(2rem, 7vw, 3rem);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.journal-intro-screen__copy {
+  margin: 0;
+  font-size: clamp(1.2rem, 4.2vw, 1.95rem);
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.journal-intro-screen__actions {
+  margin-top: 0.45rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.journal-intro-screen__button {
+  font-size: clamp(1rem, 3.4vw, 1.45rem);
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.journal-quiz-panel {
+  min-height: auto;
+}
+
+.journal-choice-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.journal-choice {
+  font-size: clamp(1rem, 3.4vw, 1.35rem);
+  padding: 0.56rem 1rem;
+}
+
+.journal-choice--selected {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 1);
+}
+
+.journal-textarea {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 0.75rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  background: rgba(39, 22, 105, 0.26);
+  color: var(--color-white);
+  font: inherit;
+  padding: 0.7rem 0.85rem;
+  resize: vertical;
+}
+
+.journal-textarea:focus-visible,
+.begin-sleep-field input:focus-visible,
+.begin-sleep-field select:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 2px;
+}
+
+.journal-flow-active .menu-screen__background {
+  filter: brightness(0.62) saturate(0.86);
+}
+
+@media (max-width: 520px) {
+  .journal-intro-screen__body {
+    margin-top: clamp(3rem, 13vh, 7rem);
+  }
+
+  .journal-intro-screen__copy {
+    font-size: clamp(1.05rem, 4.6vw, 1.3rem);
   }
 }

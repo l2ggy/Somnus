@@ -17,10 +17,25 @@
   height: 100dvh;
   object-fit: cover;
   object-position: center;
+  filter: brightness(0.58) saturate(0.9);
+  transform: scale(1.03);
   z-index: 0;
+  animation: fade-in 900ms ease-out both;
+  transition: filter 340ms ease, transform 460ms ease;
+}
+
+
+.home-screen::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 7, 36, 0.34) 0%, rgba(14, 8, 42, 0.52) 100%);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .home-screen__content {
+  animation: fade-in 620ms ease-out both;
   position: relative;
   z-index: 1;
   min-height: 100vh;
@@ -42,6 +57,13 @@
 .home-screen__logo {
   width: clamp(12rem, 60vw, 15rem);
   height: auto;
+  transition: transform 320ms var(--motion-ease-pop), filter 320ms ease;
+}
+
+.home-screen__content--intro:hover .home-screen__logo,
+.home-screen__content--intro:focus-visible .home-screen__logo {
+  transform: translateY(-2px) scale(1.02);
+  filter: drop-shadow(0 10px 25px rgba(4, 2, 19, 0.25));
 }
 
 .home-screen__prompt {
