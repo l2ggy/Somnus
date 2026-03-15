@@ -35,6 +35,7 @@
           <nav class="menu-screen__options" aria-label="Main options">
             <a class="menu-screen__option" href="/about-somnus.html">About Somnus</a>
             <a class="menu-screen__option" href="/sleep-journal.html">My Sleep Journal</a>
+            <a class="menu-screen__option" href="/preferences.html">Preferences</a>
             <a class="menu-screen__option" href="/begin-sleep.html">Begin Sleep</a>
           </nav>
         </div>
@@ -43,16 +44,16 @@
 
     <script>
       const userIdInput = document.getElementById('menu-user-id');
-      const storageKey = 'somnus_demo_user_id';
+      const userIdKey = 'somnus_demo_user_id';
 
       if (userIdInput) {
-        const existing = localStorage.getItem(storageKey);
+        const existing = localStorage.getItem(userIdKey);
         if (existing) {
           userIdInput.value = existing;
         }
 
         userIdInput.addEventListener('input', () => {
-          localStorage.setItem(storageKey, userIdInput.value.trim());
+          localStorage.setItem(userIdKey, userIdInput.value.trim());
         });
       }
     </script>

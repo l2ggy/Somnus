@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Somnus | Preferences</title>
+    <link rel="stylesheet" href="/styles/base.css" />
+    <link rel="stylesheet" href="/styles/menu.css" />
+  </head>
+  <body>
+    <main class="menu-screen" aria-label="Preferences screen">
+      <img class="menu-screen__background asset-fade" src="/assets/BackgroundPortrait.svg" alt="" aria-hidden="true" />
+      <section class="menu-screen__content" aria-label="Preferences">
+        <header class="menu-screen__header anim-pop-in" style="--anim-delay: 120ms">
+          <div class="menu-screen__header-top">
+            <img class="menu-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="286" height="88" />
+            <a class="menu-screen__menu-link" href="/menu.html">← Menu</a>
+          </div>
+          <div class="menu-screen__divider" aria-hidden="true"></div>
+        </header>
+
+        <div class="menu-screen__body menu-screen__body--page anim-pop-in" style="--anim-delay: 220ms">
+          <h1 class="menu-screen__title">Preferences</h1>
+
+          <section class="journal-panel begin-sleep-panel" aria-label="Saved preferences">
+            <p class="begin-sleep-step__hint">These answers pre-fill and can skip matching questions in Begin Sleep.</p>
+
+            <form id="preferences-form" class="begin-sleep-form">
+              <div class="begin-sleep-field">
+                <label for="pref-wake-time">Target wake-up time</label>
+                <input id="pref-wake-time" name="target_wake_time" type="time" value="07:30" />
+              </div>
+
+              <fieldset class="begin-sleep-choices">
+                <legend>Preferred audio</legend>
+                <label><input type="checkbox" name="preferred_audio" value="brown_noise" /> Brown noise</label>
+                <label><input type="checkbox" name="preferred_audio" value="white_noise" /> White noise</label>
+                <label><input type="checkbox" name="preferred_audio" value="pink_noise" /> Pink noise</label>
+                <label><input type="checkbox" name="preferred_audio" value="rain" /> Rain</label>
+                <label><input type="checkbox" name="preferred_audio" value="waves" /> Waves</label>
+                <label><input type="checkbox" name="preferred_audio" value="breathing_pace" /> Breathing pace</label>
+              </fieldset>
+
+              <fieldset class="begin-sleep-choices">
+                <legend>Disliked audio</legend>
+                <label><input type="checkbox" name="disliked_audio" value="brown_noise" /> Brown noise</label>
+                <label><input type="checkbox" name="disliked_audio" value="white_noise" /> White noise</label>
+                <label><input type="checkbox" name="disliked_audio" value="pink_noise" /> Pink noise</label>
+                <label><input type="checkbox" name="disliked_audio" value="rain" /> Rain</label>
+                <label><input type="checkbox" name="disliked_audio" value="waves" /> Waves</label>
+                <label><input type="checkbox" name="disliked_audio" value="breathing_pace" /> Breathing pace</label>
+              </fieldset>
+
+              <div class="begin-sleep-field">
+                <label for="pref-sleep-goal">Sleep goal</label>
+                <select id="pref-sleep-goal" name="sleep_goal">
+                  <option value="deep_sleep_focus">Deep sleep focus</option>
+                  <option value="rem_focus">REM focus</option>
+                  <option value="balanced_sleep" selected>Balanced sleep</option>
+                  <option value="recovery">Recovery</option>
+                  <option value="reduce_awakenings">Reduce awakenings</option>
+                </select>
+              </div>
+
+              <div class="begin-sleep-field">
+                <label for="pref-aggressiveness">Intervention aggressiveness</label>
+                <select id="pref-aggressiveness" name="intervention_aggressiveness">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+
+              <div class="begin-sleep-actions">
+                <button class="menu-screen__option begin-sleep-btn" type="submit">Save preferences</button>
+              </div>
+              <p class="begin-sleep-status" id="preferences-status" aria-live="polite"></p>
+            </form>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const preferencesKey = 'somnus_sleep_preferences';
+      const form = document.getElementById('preferences-form');
+      const status = document.getElementById('preferences-status');
+
+      function initAssetFadeIns() {
+        document.querySelectorAll('.asset-fade').forEach((asset) => {
+          if (asset.complete) {
+            asset.classList.add('asset-fade--ready');
+            return;
+          }
+          asset.addEventListener('load', () => asset.classList.add('asset-fade--ready'), { once: true });
+        });
+      }
+
+      function collectPreferences() {
+        return {
+          target_wake_time: document.getElementById('pref-wake-time').value || '',
+          preferred_audio: Array.from(document.querySelectorAll('input[name="preferred_audio"]:checked')).map((n) => n.value),
+          disliked_audio: Array.from(document.querySelectorAll('input[name="disliked_audio"]:checked')).map((n) => n.value),
+          sleep_goal: document.getElementById('pref-sleep-goal').value || '',
+          intervention_aggressiveness: document.getElementById('pref-aggressiveness').value || '',
+        };
+      }
+
+      function applyPreferences(preferences) {
+        if (!preferences) return;
+
+        if (preferences.target_wake_time) {
+          document.getElementById('pref-wake-time').value = preferences.target_wake_time;
+        }
+        if (preferences.sleep_goal) {
+          document.getElementById('pref-sleep-goal').value = preferences.sleep_goal;
+        }
+        if (preferences.intervention_aggressiveness) {
+          document.getElementById('pref-aggressiveness').value = preferences.intervention_aggressiveness;
+        }
+
+        const preferred = Array.isArray(preferences.preferred_audio) ? preferences.preferred_audio : [];
+        document.querySelectorAll('input[name="preferred_audio"]').forEach((input) => {
+          input.checked = preferred.includes(input.value);
+        });
+
+        const disliked = Array.isArray(preferences.disliked_audio) ? preferences.disliked_audio : [];
+        document.querySelectorAll('input[name="disliked_audio"]').forEach((input) => {
+          input.checked = disliked.includes(input.value);
+        });
+      }
+
+      form?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const preferences = collectPreferences();
+        localStorage.setItem(preferencesKey, JSON.stringify(preferences));
+        status.textContent = 'Preferences saved.';
+      });
+
+      const existing = localStorage.getItem(preferencesKey);
+      if (existing) {
+        try {
+          applyPreferences(JSON.parse(existing));
+        } catch (error) {
+          status.textContent = 'Could not read saved preferences. Please save them again.';
+        }
+      }
+
+      initAssetFadeIns();
+    </script>
+  </body>
+</html>
