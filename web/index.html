@@ -2,18 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#271669" />
     <title>Somnus</title>
+    <link rel="stylesheet" href="./styles/base.css" />
+    <link rel="stylesheet" href="./styles/home.css" />
   </head>
   <body>
-    <main>
-      <h1>Somnus Web Frontend Placeholder</h1>
-      <p>
-        This static page confirms the Vercel frontend root is configured correctly.
-      </p>
-      <p>
-        Next step: replace this file with the real web app (React, Next.js, etc.).
-      </p>
+    <main class="home-screen" aria-label="Somnus home screen">
+      <div class="home-screen__overlay"></div>
+
+      <div class="home-screen__content">
+        <img
+          class="home-screen__logo"
+          src="./assets/Logo.svg"
+          alt="Somnus"
+          width="220"
+          height="85"
+        />
+
+        <p class="home-screen__cta" role="button" tabindex="0" aria-label="Tap to start">
+          Tap to start
+        </p>
+      </div>
     </main>
   </body>
 </html>

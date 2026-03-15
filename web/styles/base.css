@@ -1,0 +1,28 @@
+:root {
+  --somnus-indigo-dark: #271669;
+  --somnus-indigo-midnight: #5a5b9b;
+  --somnus-gray-indigo: #a29fb8;
+  --somnus-white: #ffffff;
+  --font-sans: "Inter", "Avenir Next", "Avenir", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--somnus-white);
+  background-color: var(--somnus-indigo-dark);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
