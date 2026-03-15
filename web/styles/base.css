@@ -1,0 +1,34 @@
+:root {
+  --somnus-text-primary: #ffffff;
+  --somnus-page-min-height: 100dvh;
+  --somnus-font-family: "Inter", "Avenir Next", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: var(--somnus-page-min-height);
+}
+
+body {
+  background-color: #0b1125;
+  color: var(--somnus-text-primary);
+  font-family: var(--somnus-font-family);
+  line-height: 1.4;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+.app-shell {
+  position: relative;
+  min-height: var(--somnus-page-min-height);
+  overflow: hidden;
+}
