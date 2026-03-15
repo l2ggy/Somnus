@@ -257,6 +257,18 @@
       let sensorInterval;
       let sessionPeakDb = -Infinity;
       let currentDb = -Infinity;
+      let interventionAudioElements;
+      let interventionAudioFadeFrame;
+      let currentInterventionAudioType;
+
+      const interventionAudioSources = {
+        brown_noise: 'assets/audio/BrownNoise.mp3',
+        white_noise: 'assets/audio/WhiteNoise.mp3',
+        pink_noise: 'assets/audio/PinkNoise.mp3',
+        rain: 'assets/audio/Rain.mp3',
+        waves: 'assets/audio/Waves.mp3',
+        breathing_pace: 'assets/audio/BreathingPace.mp3',
+      };
 
       const defaultFlowText = 'Set wake-up time → Set wake-up audio → Set sleep profile → Begin sleep';
 
@@ -458,6 +470,79 @@
           .join(' ');
       }
 
+      function getInterventionAudioElements() {
+        if (interventionAudioElements) return interventionAudioElements;
+
+        interventionAudioElements = Object.entries(interventionAudioSources).reduce((accumulator, [type, src]) => {
+          const audio = new Audio(src);
+          audio.preload = 'auto';
+          audio.loop = true;
+          audio.volume = 0;
+          accumulator[type] = audio;
+          return accumulator;
+        }, {});
+
+        return interventionAudioElements;
+      }
+
+      function stopInterventionAudioFade() {
+        if (!interventionAudioFadeFrame) return;
+        window.cancelAnimationFrame(interventionAudioFadeFrame);
+        interventionAudioFadeFrame = undefined;
+      }
+
+      function setInterventionAudio(type) {
+        const allAudioElements = getInterventionAudioElements();
+        const nextAudio = type ? allAudioElements[type] : undefined;
+
+        stopInterventionAudioFade();
+
+        if (nextAudio) {
+          const playbackPromise = nextAudio.play();
+          if (playbackPromise && typeof playbackPromise.catch === 'function') {
+            playbackPromise.catch(() => {});
+          }
+        }
+
+        const fadeDurationMs = 1200;
+        const fadeStartTime = performance.now();
+        const initialVolumes = Object.entries(allAudioElements).reduce((accumulator, [audioType, audioElement]) => {
+          accumulator[audioType] = audioElement.volume;
+          return accumulator;
+        }, {});
+
+        const tick = (now) => {
+          const progress = Math.min((now - fadeStartTime) / fadeDurationMs, 1);
+
+          Object.entries(allAudioElements).forEach(([audioType, audioElement]) => {
+            const targetVolume = audioType === type ? 1 : 0;
+            const startingVolume = initialVolumes[audioType] ?? 0;
+            const nextVolume = startingVolume + (targetVolume - startingVolume) * progress;
+            audioElement.volume = Math.min(1, Math.max(0, nextVolume));
+
+            if (progress >= 1 && targetVolume === 0) {
+              audioElement.pause();
+              audioElement.currentTime = 0;
+            }
+          });
+
+          if (progress < 1) {
+            interventionAudioFadeFrame = window.requestAnimationFrame(tick);
+            return;
+          }
+
+          interventionAudioFadeFrame = undefined;
+        };
+
+        interventionAudioFadeFrame = window.requestAnimationFrame(tick);
+        currentInterventionAudioType = type;
+      }
+
+      function stopAllInterventionAudio() {
+        currentInterventionAudioType = undefined;
+        setInterventionAudio(undefined);
+      }
+
       function renderIntervention(statePayload) {
         const intervention = statePayload?.active_intervention;
         const type = intervention?.type;
@@ -467,11 +552,17 @@
           const friendlyType = formatInterventionName(type);
           interventionStatusLabel.textContent = `Somnus is actively helping with ${friendlyType}.`;
           sleepSessionScreen?.classList.add('sleep-session-screen--intervening');
+          if (type !== currentInterventionAudioType) {
+            setInterventionAudio(type in interventionAudioSources ? type : undefined);
+          }
           return;
         }
 
         interventionStatusLabel.textContent = 'Somnus support: resting';
         sleepSessionScreen?.classList.remove('sleep-session-screen--intervening');
+        if (currentInterventionAudioType) {
+          stopAllInterventionAudio();
+        }
       }
 
       async function sendSensorAndRefreshState(userId, peakDb) {
@@ -557,6 +648,7 @@
               if (interventionStatusLabel) {
                 interventionStatusLabel.textContent = `Somnus support status unavailable (${error.message}).`;
                 sleepSessionScreen?.classList.remove('sleep-session-screen--intervening');
+                stopAllInterventionAudio();
               }
             }
           }, 10000);
@@ -597,6 +689,7 @@
         }
         currentDb = -Infinity;
         sessionPeakDb = -Infinity;
+        stopAllInterventionAudio();
       }
 
       function collectPayload() {
