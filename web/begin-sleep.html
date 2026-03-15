@@ -260,6 +260,23 @@
 
       const defaultFlowText = 'Set wake-up time → Set wake-up audio → Set sleep profile → Begin sleep';
 
+      function summarizeHttpError(errorText, fallbackMessage) {
+        const trimmed = typeof errorText === 'string' ? errorText.trim() : '';
+        if (!trimmed) return fallbackMessage;
+
+        const htmlLike = /^<!doctype html/i.test(trimmed) || /^<html/i.test(trimmed);
+        if (htmlLike) {
+          const hasBadGateway = /bad gateway/i.test(trimmed) || />502</.test(trimmed);
+          if (hasBadGateway) {
+            return 'The server is temporarily unavailable (502 Bad Gateway). Please try again in a few minutes.';
+          }
+          return fallbackMessage;
+        }
+
+        const singleLine = trimmed.replace(/\s+/g, ' ').slice(0, 220);
+        return singleLine || fallbackMessage;
+      }
+
       function initAssetFadeIns() {
         document.querySelectorAll('.asset-fade').forEach((asset) => {
           if (asset.complete) {
@@ -753,7 +770,9 @@
 
           if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(errorText || `Request failed (${response.status})`);
+            const fallbackMessage = `Request failed (${response.status})`;
+            const safeMessage = summarizeHttpError(errorText, fallbackMessage);
+            throw new Error(safeMessage);
           }
 
           const formattedWakeTime = formatWakeTime(payload.preferences?.target_wake_time);
@@ -763,7 +782,8 @@
           status.textContent = '';
           setExperienceState('sleeping');
         } catch (error) {
-          status.textContent = `Could not start session (${error.message}). If this is "Load failed", check that the deployed app has the /api proxy route configured.`;
+          const detail = error?.message || 'Unknown error';
+          status.textContent = `Could not start session (${detail}). If this is "Load failed", check that the deployed app has the /api proxy route configured.`;
         }
       });
 
@@ -838,13 +858,16 @@
 
           if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(errorText || `Request failed (${response.status})`);
+            const fallbackMessage = `Request failed (${response.status})`;
+            const safeMessage = summarizeHttpError(errorText, fallbackMessage);
+            throw new Error(safeMessage);
           }
 
           journalStatus.textContent = 'Journal entry saved. Redirecting...';
           window.location.href = '/sleep-journal.html';
         } catch (error) {
-          journalStatus.textContent = `Could not save journal entry (${error.message}).`;
+          const detail = error?.message || 'Unknown error';
+          journalStatus.textContent = `Could not save journal entry (${detail}).`;
         }
       });
 

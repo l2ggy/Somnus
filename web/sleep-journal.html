@@ -58,6 +58,24 @@
         return (localStorage.getItem(storageKey) || '').trim();
       }
 
+
+      function summarizeHttpError(errorText, fallbackMessage) {
+        const trimmed = typeof errorText === 'string' ? errorText.trim() : '';
+        if (!trimmed) return fallbackMessage;
+
+        const htmlLike = /^<!doctype html/i.test(trimmed) || /^<html/i.test(trimmed);
+        if (htmlLike) {
+          const hasBadGateway = /bad gateway/i.test(trimmed) || />502</.test(trimmed);
+          if (hasBadGateway) {
+            return 'The server is temporarily unavailable (502 Bad Gateway). Please try again in a few minutes.';
+          }
+          return fallbackMessage;
+        }
+
+        const singleLine = trimmed.replace(/\s+/g, ' ').slice(0, 220);
+        return singleLine || fallbackMessage;
+      }
+
       function formatDate(dateValue) {
         if (!dateValue) return 'Unknown date';
         const parsed = new Date(`${dateValue}T00:00:00`);
@@ -125,13 +143,17 @@
 
           if (response.status !== 405) {
             const errorText = await response.text();
-            throw new Error(errorText || `Request failed (${response.status})`);
+            const fallbackMessage = `Request failed (${response.status})`;
+            const safeMessage = summarizeHttpError(errorText, fallbackMessage);
+            throw new Error(safeMessage);
           }
 
           const fallbackResponse = await fetch(`/api/session/${encodedUserId}/state`);
           if (!fallbackResponse.ok) {
             const errorText = await fallbackResponse.text();
-            throw new Error(errorText || `Fallback request failed (${fallbackResponse.status})`);
+            const fallbackMessage = `Fallback request failed (${fallbackResponse.status})`;
+            const safeMessage = summarizeHttpError(errorText, fallbackMessage);
+            throw new Error(safeMessage);
           }
 
           const stateData = await fallbackResponse.json();
@@ -142,7 +164,8 @@
           renderEntry();
         } catch (error) {
           dateEl.textContent = 'Unable to load entries';
-          statusEl.textContent = `Could not load journal entries (${error.message}).`;
+          const detail = error?.message || 'Unknown error';
+          statusEl.textContent = `Could not load journal entries (${detail}).`;
           prevBtn.disabled = true;
           nextBtn.disabled = true;
           entryEl.hidden = true;
