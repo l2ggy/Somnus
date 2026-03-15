@@ -157,7 +157,6 @@
             <section class="journal-quiz-step" data-journal-step="2" hidden>
               <h3 class="begin-sleep-step__title">Any other notes?</h3>
               <div class="journal-quiz-options" role="group" aria-label="Additional notes">
-                <button type="button" class="journal-choice" data-field="notes_choice" data-value="talk_to_somnus">Talk to Somnus</button>
                 <button type="button" class="journal-choice" data-field="notes_choice" data-value="no_thanks">No thanks</button>
               </div>
               <textarea id="journal-notes" class="journal-notes" name="journal_notes" placeholder="Optional notes for Somnus"></textarea>
@@ -349,17 +348,24 @@
       }
 
       function collectJournalPayload() {
-        const userId = getStoredUserId();
         const notes = document.getElementById('journal-notes').value.trim();
+        const now = new Date();
+        const feelingScoreMap = {
+          rested: 9,
+          a_little_groggy: 6,
+          still_tired: 3,
+        };
+        const sleepQualityAwakeningMap = {
+          great: 0,
+          okay: 1,
+          rough: 3,
+        };
 
         return {
-          mood: journalAnswers.morning_feeling,
-          sleep_quality: journalAnswers.sleep_quality,
-          notes_choice: journalAnswers.notes_choice,
+          date: now.toISOString().slice(0, 10),
+          rested_score: feelingScoreMap[journalAnswers.morning_feeling] ?? 5,
+          awakenings_reported: sleepQualityAwakeningMap[journalAnswers.sleep_quality] ?? 1,
           notes,
-          source: 'post_sleep_quiz',
-          submitted_at: new Date().toISOString(),
-          user_id: userId,
         };
       }
 
@@ -495,7 +501,8 @@
             throw new Error(errorText || `Request failed (${response.status})`);
           }
 
-          journalStatus.textContent = 'Journal entry saved.';
+          journalStatus.textContent = 'Journal entry saved. Redirecting...';
+          window.location.href = '/sleep-journal.html';
         } catch (error) {
           journalStatus.textContent = `Could not save journal entry (${error.message}).`;
         }

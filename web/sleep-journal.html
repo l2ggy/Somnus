@@ -24,15 +24,98 @@
 
           <section class="journal-panel" aria-label="Journal entry panel">
             <div class="journal-panel__date-row">
-              <button type="button" class="journal-panel__arrow" aria-label="Previous date">←</button>
-              <p class="journal-panel__date">Monday, March 9 2025</p>
-              <button type="button" class="journal-panel__arrow" aria-label="Next date">→</button>
+              <button type="button" class="journal-panel__arrow" aria-label="Previous date" id="journal-prev">←</button>
+              <p class="journal-panel__date" id="journal-date">Loading…</p>
+              <button type="button" class="journal-panel__arrow" aria-label="Next date" id="journal-next">→</button>
             </div>
 
-            <p class="journal-panel__status">Somnus did not analyze your sleep this night.</p>
+            <p class="journal-panel__status" id="journal-summary">Loading journal entries…</p>
           </section>
         </div>
       </section>
     </main>
+
+    <script>
+      const storageKey = 'somnus_demo_user_id';
+      const dateLabel = document.getElementById('journal-date');
+      const summaryLabel = document.getElementById('journal-summary');
+      const prevBtn = document.getElementById('journal-prev');
+      const nextBtn = document.getElementById('journal-next');
+      let entries = [];
+      let currentIndex = 0;
+
+      function formatEntryDate(isoDate) {
+        const date = new Date(`${isoDate}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return isoDate;
+        return date.toLocaleDateString(undefined, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        });
+      }
+
+      function entrySummary(entry) {
+        const awakenings = entry.awakenings_reported === 1 ? '1 awakening' : `${entry.awakenings_reported} awakenings`;
+        const notes = entry.notes?.trim() ? ` Notes: ${entry.notes.trim()}` : '';
+        return `Rested score: ${entry.rested_score}/10. ${awakenings}.${notes}`;
+      }
+
+      function renderEntry() {
+        if (!entries.length) {
+          dateLabel.textContent = 'No entries yet';
+          summaryLabel.textContent = 'No journal entries were found for this user yet.';
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+
+        const entry = entries[currentIndex];
+        dateLabel.textContent = formatEntryDate(entry.date);
+        summaryLabel.textContent = entrySummary(entry);
+        prevBtn.disabled = currentIndex <= 0;
+        nextBtn.disabled = currentIndex >= entries.length - 1;
+      }
+
+      async function loadJournalEntries() {
+        const userId = (localStorage.getItem(storageKey) || '').trim();
+        if (!userId) {
+          dateLabel.textContent = 'Missing user';
+          summaryLabel.textContent = 'Set Demo User ID on the Menu page first.';
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/session/${encodeURIComponent(userId)}/journal`);
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Request failed (${response.status})`);
+          }
+
+          entries = await response.json();
+          currentIndex = Math.max(0, entries.length - 1);
+          renderEntry();
+        } catch (error) {
+          dateLabel.textContent = 'Unable to load';
+          summaryLabel.textContent = `Could not load journal entries (${error.message}).`;
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+        }
+      }
+
+      prevBtn?.addEventListener('click', () => {
+        currentIndex = Math.max(0, currentIndex - 1);
+        renderEntry();
+      });
+
+      nextBtn?.addEventListener('click', () => {
+        currentIndex = Math.min(entries.length - 1, currentIndex + 1);
+        renderEntry();
+      });
+
+      loadJournalEntries();
+    </script>
   </body>
 </html>
