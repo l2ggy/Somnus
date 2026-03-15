@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Somnus | Menu</title>
+    <link rel="stylesheet" href="/styles/base.css" />
+    <link rel="stylesheet" href="/styles/menu.css" />
+  </head>
+  <body>
+    <main class="menu-screen" aria-label="Somnus menu screen">
+      <img
+        class="menu-screen__background anim-fade-in"
+        style="--anim-delay: 80ms"
+        src="/assets/BackgroundPortrait.svg"
+        alt=""
+        aria-hidden="true"
+      />
+
+      <section class="menu-screen__content" aria-label="Menu">
+        <header class="menu-screen__header anim-pop-in" style="--anim-delay: 120ms">
+          <img class="menu-screen__logo" src="/assets/Logo.svg" alt="Somnus" width="286" height="88" />
+          <div class="menu-screen__divider" aria-hidden="true"></div>
+        </header>
+
+        <div class="menu-screen__body anim-pop-in" style="--anim-delay: 220ms">
+          <p class="menu-screen__question">What brings you here?</p>
+
+          <nav class="menu-screen__options" aria-label="Main options">
+            <a class="menu-screen__option" href="/about-somnus.html">About Somnus</a>
+            <a class="menu-screen__option" href="/sleep-journal.html">My Sleep Journal</a>
+            <a class="menu-screen__option" href="/sleep-stats.html">My Sleep Stats</a>
+            <a class="menu-screen__option" href="/begin-sleep.html">Begin Sleep</a>
+          </nav>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
