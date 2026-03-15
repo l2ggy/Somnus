@@ -136,6 +136,34 @@ When you later add frontend code, verify in this order:
 
 ## 10) Common misconfigurations and fixes
 
+
+### "No fastapi entrypoint found" during frontend deploy
+
+If you still see it after setting Root Directory to `web`:
+- This usually means the Vercel project is still building from repo root (`.`), or the old project settings were cached from an earlier failed setup.
+- Fix steps (in order):
+  1. Open **Settings → General → Root Directory** and confirm it is exactly `web`.
+  2. Verify you did **not** set only **Output Directory** to `web` (that is a different setting and does not change framework detection).
+  3. Open **Settings → Build and Development Settings** and set **Framework Preset** to **Other** (unless you now use a specific framework).
+  4. Trigger a fresh deploy using **Redeploy → Use existing Build Cache: OFF**.
+  5. If error persists, create a brand-new Vercel project connected to the same repo and set Root Directory to `web` before first deploy.
+
+Repo fallback included: root `vercel.json` now explicitly forces static builds from `web/**/*` and routes all requests to `/web/index.html`, preventing Python runtime auto-detection when repo root is used.
+
+- Cause: Vercel is trying to treat the deployment as a Python backend instead of a static/frontend app.
+- Fix checklist:
+  1. In Vercel project settings, set **Root Directory** to `web` (not repo root).
+  2. Ensure `web/index.html` exists (Vercel needs a frontend entry file for static deploys).
+  3. Keep `web/vercel.json` committed so all routes resolve to `index.html` for SPA-style routing.
+  4. In Framework Preset, choose **Other** (or your actual frontend framework once added).
+
+
+### Other causes of the same error
+- Deploying the wrong Vercel project (a previous project still linked to this repo).
+- Root Directory set only for one environment (for example Preview but not Production).
+- Deploy trigger coming from Vercel CLI at repo root without `--cwd web`.
+- Stale project import from before frontend files existed.
+
 ### Build runs in wrong folder
 - Fix: set **Root Directory** to frontend folder (`web`, `frontend`, etc.).
 
