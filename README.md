@@ -17,7 +17,7 @@ fastapi uvicorn pydantic openai python-dotenv
 
 ## Workflow
 Workload was divided as follows:
-- Boris: AI & ML Lead -- model architecture, training, evaluation, and optimization
+- Boris: AI/ML & FrontendLead -- model architecture, training, evaluation, and optimization
 - Jessica: Data & Backend Lead -- data collection, database management, API development, and integration
 - Nicole: Product & submission lead -- presentation, demo video, design concept, documentation
 
