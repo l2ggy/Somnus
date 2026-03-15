@@ -119,7 +119,8 @@
       const form = document.getElementById('begin-sleep-form');
       const activeUserIdLabel = document.getElementById('active-user-id');
       const storageKey = 'somnus_demo_user_id';
-      const apiBase = 'https://somnus-api.onrender.com';
+      const sameOriginApiPath = '/api/session/start';
+      const directApiUrl = 'https://somnus-api.onrender.com/session/start';
       let currentStep = 0;
 
       const flowText = [
@@ -215,11 +216,25 @@
         status.textContent = 'Starting sleep session...';
 
         try {
-          const response = await fetch(`${apiBase}/session/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
+          let response;
+
+          try {
+            response = await fetch(sameOriginApiPath, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+          } catch (_) {
+            response = null;
+          }
+
+          if (!response || !response.ok) {
+            response = await fetch(directApiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+          }
 
           if (!response.ok) {
             const errorText = await response.text();
@@ -228,7 +243,12 @@
 
           status.textContent = 'Session started successfully.';
         } catch (error) {
-          status.textContent = `Could not start session (${error.message}).`;
+          const errorMessage = String(error && error.message ? error.message : error);
+          if (/Failed to fetch|Load failed|NetworkError/i.test(errorMessage)) {
+            status.textContent = 'Could not start session. This is usually a browser CORS/proxy issue. Ensure /api/session/start is proxied to somnus-api.onrender.com.';
+          } else {
+            status.textContent = `Could not start session (${errorMessage}).`;
+          }
         }
       });
 

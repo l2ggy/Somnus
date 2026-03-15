@@ -343,6 +343,13 @@
   color: #271669;
 }
 
+
+.begin-sleep-field input[type='time'] {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
 .begin-sleep-choices {
   margin: 0 0 0.9rem;
   border: 1.5px solid rgba(255, 255, 255, 0.45);

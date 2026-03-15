@@ -17,6 +17,11 @@
       "dest": "/web/styles/$1"
     },
     {
+      "src": "/api/session/start",
+      "methods": ["POST", "OPTIONS"],
+      "dest": "https://somnus-api.onrender.com/session/start"
+    },
+    {
       "src": "/",
       "dest": "/web/index.html"
     }
