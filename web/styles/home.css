@@ -1,0 +1,68 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--color-dark-indigo);
+  color: var(--color-white);
+}
+
+.home-screen {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-6);
+  padding: max(env(safe-area-inset-top), var(--space-6)) var(--space-6)
+    max(env(safe-area-inset-bottom), var(--space-6));
+  background-image: url("../assets/BackgroundPortraitDarker.svg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.home-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(22 12 62 / 22%) 0%, rgb(22 12 62 / 45%) 100%);
+}
+
+.home-screen__logo,
+.home-screen__start {
+  position: relative;
+  z-index: 1;
+}
+
+.home-screen__logo {
+  width: min(52vw, 220px);
+  height: auto;
+}
+
+.home-screen__start {
+  border: 0;
+  background: transparent;
+  color: var(--color-white);
+  font-family: var(--font-ui);
+  font-size: var(--tap-text-size);
+  font-weight: 700;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  padding: var(--space-2) var(--space-4);
+}
+
+.home-screen__start:focus-visible {
+  outline: 2px solid var(--color-whisper-pink);
+  outline-offset: 2px;
+  border-radius: 999px;
+}

@@ -1,0 +1,17 @@
+:root {
+  --color-dark-indigo: #271669;
+  --color-midnight-blue: #5a5b9b;
+  --color-gray-lavender: #817197;
+  --color-gray-indigo: #a29fb8;
+  --color-whisper-pink: #f5e7eb;
+  --color-white: #ffffff;
+
+  --font-logo: "Roxborough CF", "Times New Roman", serif;
+  --font-ui: "Body Grotesque", "Avenir Next", "Inter", "Segoe UI", sans-serif;
+
+  --space-2: 0.5rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+
+  --tap-text-size: clamp(1.125rem, 4vw, 1.375rem);
+}
