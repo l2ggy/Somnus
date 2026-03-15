@@ -24,6 +24,15 @@
   z-index: 0;
 }
 
+.home-screen--navigating .home-screen__background {
+  filter: brightness(0.5) saturate(0.85) blur(8px);
+  transform: scale(1.06);
+}
+
+.home-screen--navigating .home-screen__content {
+  opacity: 0;
+  transform: scale(0.985);
+}
 
 .home-screen::after {
   content: '';
@@ -34,8 +43,9 @@
   pointer-events: none;
 }
 
- .home-screen__content {
+.home-screen__content {
   animation: pop-in var(--motion-duration-slow) var(--motion-ease-pop) both;
+  transition: opacity 280ms ease, transform 280ms var(--motion-ease-pop);
 
   position: relative;
   z-index: 1;
