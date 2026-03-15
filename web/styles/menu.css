@@ -301,6 +301,106 @@
   font-size: clamp(1rem, 3.5vw, 1.35rem);
 }
 
+
+.sleep-session-screen__telemetry {
+  display: grid;
+  gap: 0.35rem;
+  width: min(100%, 28rem);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.8rem;
+  background: rgba(24, 19, 57, 0.32);
+  padding: 0.8rem 0.95rem;
+}
+
+.sleep-session-screen__db,
+.sleep-session-screen__db-max,
+.sleep-session-screen__intervention {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: clamp(0.95rem, 3vw, 1.12rem);
+}
+
+.sleep-session-screen__intervention {
+  color: rgba(194, 238, 255, 0.95);
+  font-weight: 600;
+}
+
+
+.sleep-session-screen__telemetry {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sleep-session-screen__telemetry::before,
+.sleep-session-screen__telemetry::after {
+  content: '';
+  position: absolute;
+  inset: -35% auto auto -20%;
+  width: 160%;
+  height: 190%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 350ms ease;
+  z-index: -1;
+}
+
+.sleep-session-screen__telemetry::before {
+  background:
+    radial-gradient(circle at 20% 35%, rgba(255, 107, 129, 0.45), rgba(255, 107, 129, 0) 48%),
+    radial-gradient(circle at 75% 62%, rgba(255, 162, 101, 0.4), rgba(255, 162, 101, 0) 44%);
+  animation: intervention-fluid-drift 8s ease-in-out infinite;
+}
+
+.sleep-session-screen__telemetry::after {
+  background:
+    radial-gradient(circle at 40% 20%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 70% 72%, rgba(255, 80, 112, 0.28), rgba(255, 80, 112, 0) 52%);
+  animation: intervention-fluid-wave 5.5s ease-in-out infinite;
+}
+
+.sleep-session-screen--intervening .sleep-session-screen__telemetry {
+  border-color: rgba(255, 164, 173, 0.75);
+  background: rgba(74, 28, 48, 0.35);
+  box-shadow: 0 0 28px rgba(255, 105, 140, 0.22);
+}
+
+.sleep-session-screen--intervening .sleep-session-screen__telemetry::before,
+.sleep-session-screen--intervening .sleep-session-screen__telemetry::after {
+  opacity: 1;
+}
+
+.sleep-session-screen--intervening .sleep-session-screen__intervention {
+  color: rgba(255, 224, 229, 1);
+}
+
+@keyframes intervention-fluid-drift {
+  0%,
+  100% {
+    transform: translate3d(-6%, -2%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(7%, 4%, 0) scale(1.08);
+  }
+}
+
+@keyframes intervention-fluid-wave {
+  0%,
+  100% {
+    transform: translate3d(6%, 0, 0) scale(1.05) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-4%, -6%, 0) scale(0.95) rotate(-5deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sleep-session-screen__telemetry::before,
+  .sleep-session-screen__telemetry::after {
+    animation: none;
+  }
+}
+
 .sleep-session-screen__cancel {
   margin-top: 0.45rem;
   border: 0;
