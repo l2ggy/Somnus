@@ -67,6 +67,32 @@ To reduce merge conflicts, code is split into sub-folders aligned with the 3-per
 
 `AgentContract` is the source of truth for lifecycle, reads/writes, and owner metadata. The orchestrator validates contracts at runtime before ticks so incompatible merges (like duplicate agent names) fail fast.
 
+## 1.2 Team C contract (merge-safety)
+
+The following invariants are shared between `app/models/userstate.py` validators and `app/pipeline_contracts.py` read/write boundaries:
+
+- **`SleepState` allowed ranges**
+  - `phase` ∈ `{"awake", "light", "deep", "rem", "unknown"}`
+  - `confidence` ∈ `[0.0, 1.0]`
+  - `wake_risk` ∈ `[0.0, 1.0]`
+  - `disturbance_reason` is `None` or a non-empty string.
+- **`ActiveIntervention` allowed ranges**
+  - `type` ∈ `{"none", "brown_noise", "white_noise", "pink_noise", "rain", "waves", "breathing_pace", "wake_ramp"}`
+  - `intensity` ∈ `[0.0, 1.0]`
+  - Contract rule: if `type == "none"`, then `intensity == 0.0`.
+- **`hypotheses` required keys by source**
+  - Every entry requires `source`.
+  - `source == "sensor_interpreter"` (pipeline writes: `hypotheses`) must include:
+    - timing anchor: `timestamp` or `date`
+    - signal payload: `signal_summary` (or backward-compatible alias `signals`)
+  - `source == "journal_reflection"` (pipeline writes: `journal_history`, `hypotheses`) must include:
+    - reflection context: `decision_context` (or backward-compatible aliases `reflection`, `rationale`)
+- **Backward-compatible aliases currently accepted**
+  - `signals` → canonical `signal_summary`
+  - `reflection` / `rationale` → canonical `decision_context`
+
+These constraints are intentionally strict enough to catch merge drift while preserving existing payloads used by earlier agent versions.
+
 ---
 
 ## 2. Core concept: shared state
