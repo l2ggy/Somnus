@@ -215,7 +215,7 @@
 }
 
 .about-screen__links a,
-.about-screen__team span {
+.about-screen__team a {
   color: var(--color-gray-indigo);
   text-decoration: underline;
   text-underline-offset: 0.16em;
