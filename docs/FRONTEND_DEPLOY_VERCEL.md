@@ -136,6 +136,15 @@ When you later add frontend code, verify in this order:
 
 ## 10) Common misconfigurations and fixes
 
+
+### "No fastapi entrypoint found" during frontend deploy
+- Cause: Vercel is trying to treat the deployment as a Python backend instead of a static/frontend app.
+- Fix checklist:
+  1. In Vercel project settings, set **Root Directory** to `web` (not repo root).
+  2. Ensure `web/index.html` exists (Vercel needs a frontend entry file for static deploys).
+  3. Keep `web/vercel.json` committed so all routes resolve to `index.html` for SPA-style routing.
+  4. In Framework Preset, choose **Other** (or your actual frontend framework once added).
+
 ### Build runs in wrong folder
 - Fix: set **Root Directory** to frontend folder (`web`, `frontend`, etc.).
 
