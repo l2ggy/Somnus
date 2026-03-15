@@ -1,6 +1,5 @@
-"""Somnus agent package grouped by contributor workstream."""
+"""Sleep intelligence and personalization agents."""
 
-from app.agents.backend import intake
 from app.agents.intelligence import (
     disturbance,
     intervention,
@@ -11,7 +10,6 @@ from app.agents.intelligence import (
 )
 
 __all__ = [
-    "intake",
     "sensor_interpreter",
     "sleep_state",
     "disturbance",

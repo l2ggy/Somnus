@@ -57,6 +57,22 @@ from app.agents import (
     journal_reflection,
 )
 from app.models.userstate import JournalEntry, SharedState
+from app.pipeline_contracts import tick_contracts, validate_contracts
+
+
+_TICK_AGENT_RUNNERS = {
+    "sensor_interpreter": sensor_interpreter.run,
+    "sleep_state": sleep_state_agent.run,
+    "disturbance": disturbance_agent.run,
+    "intervention": intervention_agent.run,
+}
+
+_TICK_SUMMARISERS = {
+    "sensor_interpreter": "_sensor_interpreter_summary",
+    "sleep_state": "_sleep_state_summary",
+    "disturbance": "_disturbance_summary",
+    "intervention": "_intervention_summary",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -126,22 +142,28 @@ def run_night_tick(state: SharedState) -> dict:
     # -----------------------------------------------------------------------
     # Agent pipeline — each step is one immutable state transform.
     # -----------------------------------------------------------------------
+    validate_contracts()
+    running_state = state
+    trace: list[dict] = []
 
-    s1 = sensor_interpreter.run(state)
-    s2 = sleep_state_agent.run(s1)
-    s3 = disturbance_agent.run(s2)
-    s4 = intervention_agent.run(s3)
+    for step, contract in enumerate(tick_contracts(), start=1):
+        runner = _TICK_AGENT_RUNNERS[contract.name]
+        summariser_name = _TICK_SUMMARISERS[contract.name]
+        summariser = globals()[summariser_name]
 
-    trace = [
-        _trace_step(1, "sensor_interpreter", _sensor_interpreter_summary(s1)),
-        _trace_step(2, "sleep_state",        _sleep_state_summary(s2)),
-        _trace_step(3, "disturbance",        _disturbance_summary(s3)),
-        _trace_step(4, "intervention",       _intervention_summary(s4)),
-    ]
+        running_state = runner(running_state)
+        trace.append(
+            _trace_step(
+                step,
+                contract.name,
+                summariser(running_state),
+                owner=contract.owner,
+            )
+        )
 
     return {
         "ok":       True,
-        "state":    s4,
+        "state":    running_state,
         "trace":    trace,
         "warnings": warnings,
     }
@@ -223,8 +245,11 @@ def run_morning_reflection(
 # These are intentionally narrow: only the fields that changed in that step.
 # ---------------------------------------------------------------------------
 
-def _trace_step(step: int, agent: str, output: dict) -> dict:
-    return {"step": step, "agent": agent, "output": output}
+def _trace_step(step: int, agent: str, output: dict, owner: str | None = None) -> dict:
+    event = {"step": step, "agent": agent, "output": output}
+    if owner is not None:
+        event["owner"] = owner
+    return event
 
 
 def _sensor_interpreter_summary(state: SharedState) -> dict:
