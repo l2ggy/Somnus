@@ -75,9 +75,7 @@
   }
 
   .home-screen__content--intro {
-    justify-content: flex-end;
-    padding-bottom: 12vh;
-    padding-bottom: 12svh;
-    padding-bottom: 12dvh;
+    justify-content: center;
+    padding-bottom: 1.5rem;
   }
 }
