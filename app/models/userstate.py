@@ -10,8 +10,9 @@ Architecture note:
   happens through SharedState.
 """
 
-from pydantic import BaseModel, Field
-from typing import List, Optional, Literal, Dict
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class UserPreferences(BaseModel):
@@ -36,20 +37,49 @@ class SensorSnapshot(BaseModel):
 
 
 class SleepState(BaseModel):
-    """Current inferred sleep phase and associated risk scores."""
+    """
+    Person C ownership: current inferred sleep phase and wake fragility.
+
+    Default semantics:
+      - phase="unknown": no reliable phase classification yet.
+      - confidence=0.0: classifier confidence is unknown/lowest certainty.
+      - wake_risk=0.0: no imminent wake-risk evidence has been detected yet.
+    """
     phase: Literal["awake", "light", "deep", "rem", "unknown"] = "unknown"
-    confidence: float = 0.0          # 0–1 model confidence in phase label
-    wake_risk: float = 0.0           # 0–1 probability of waking in next window
+    confidence: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="0–1 model confidence in the current sleep phase label.",
+    )
+    wake_risk: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="0–1 probability of waking in the next evaluation window.",
+    )
     disturbance_reason: Optional[str] = None
 
 
 class ActiveIntervention(BaseModel):
-    """Describes whatever audio/pacing intervention is currently running."""
+    """
+    Person C ownership: intervention currently running for the user.
+
+    Default semantics:
+      - type="none" with intensity=0.0 means no intervention is active.
+      - intensity is normalized intervention strength (for audio, this maps to
+        effective volume; for pacing/ramp, it maps to stimulation strength).
+    """
     type: Literal[
         "none", "brown_noise", "white_noise", "pink_noise",
         "rain", "waves", "breathing_pace", "wake_ramp"
     ] = "none"
-    intensity: float = 0.0           # 0–1 volume / strength
+    intensity: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="0–1 normalized intervention strength.",
+    )
     started_at: Optional[str] = None
     rationale: Optional[str] = None  # Human-readable reason chosen by an agent
 
@@ -89,6 +119,16 @@ class SharedState(BaseModel):
       3. Each agent returns an updated SharedState (or a partial patch).
       4. Orchestrator merges patches and persists the result.
 
+    Person C owns and maintains the following state sections:
+      - sleep_state: current phase classification + wake-risk confidence.
+      - active_intervention: current intervention type/intensity/rationale.
+      - hypotheses: append-only reasoning artifacts from real-time and morning
+        agents, validated to include source and optional timing/signal/context.
+      - journal-derived personalization behavior: represented by the interaction
+        between journal_history, hypotheses, and downstream NightlyPlan updates.
+        Journal insights can influence future intervention ordering/intensity
+        choices without changing API shape.
+
     This design lets agents be pure functions (SharedState -> SharedState),
     making them easy to test in isolation and safe to run concurrently when
     their fields don't overlap.
@@ -99,6 +139,57 @@ class SharedState(BaseModel):
     sleep_state: SleepState = Field(default_factory=SleepState)
     active_intervention: ActiveIntervention = Field(default_factory=ActiveIntervention)
     nightly_plan: NightlyPlan = Field(default_factory=NightlyPlan)
-    # Free-form hypotheses logged by the disturbance / strategist agents.
-    hypotheses: List[Dict] = Field(default_factory=list)
+    # Person C-owned hypothesis log with backward-compatible dict schema.
+    hypotheses: List[Dict[str, Any]] = Field(default_factory=list)
     journal_history: List[JournalEntry] = Field(default_factory=list)
+
+    @field_validator("hypotheses")
+    @classmethod
+    def validate_hypotheses_shape(cls, hypotheses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Validate each hypothesis entry while preserving legacy payload keys.
+
+        Required shape:
+          - source: non-empty string identifying producer agent/component.
+
+        Optional compatible keys:
+          - timestamp or date: time anchor for the hypothesis.
+          - signal_summary (or legacy alias "signals"): short signal digest.
+          - decision_context (or legacy aliases "reflection" / "rationale"):
+            decision rationale, pattern summary, or recommendation context.
+
+        Backward compatibility:
+          - Additional keys are allowed and preserved.
+          - Older entries without timing/context keys remain valid.
+        """
+        if not isinstance(hypotheses, list):
+            raise TypeError("hypotheses must be a list")
+
+        for i, entry in enumerate(hypotheses):
+            if not isinstance(entry, dict):
+                raise TypeError(f"hypotheses[{i}] must be a dict")
+
+            source = entry.get("source")
+            if not isinstance(source, str) or not source.strip():
+                raise ValueError(f"hypotheses[{i}].source must be a non-empty string")
+
+            for key in ("timestamp", "date"):
+                if key in entry and (not isinstance(entry[key], str) or not entry[key].strip()):
+                    raise ValueError(f"hypotheses[{i}].{key} must be a non-empty string when present")
+
+            signal_summary = entry.get("signal_summary", entry.get("signals"))
+            if signal_summary is not None and not isinstance(signal_summary, (str, dict)):
+                raise ValueError(
+                    f"hypotheses[{i}].signal_summary/signals must be a string or object when present"
+                )
+
+            decision_context = entry.get(
+                "decision_context",
+                entry.get("reflection", entry.get("rationale")),
+            )
+            if decision_context is not None and not isinstance(decision_context, (str, dict)):
+                raise ValueError(
+                    f"hypotheses[{i}].decision_context/reflection/rationale must be a string or object when present"
+                )
+
+        return hypotheses
