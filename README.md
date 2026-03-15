@@ -1,1 +1,3 @@
 # Somnus 
+
+fastapi uvicorn pydantic openai python-dotenv
