@@ -25,6 +25,7 @@ understanding of an LLM genuinely improves output quality.
 """
 
 import logging
+from typing import Any
 
 from app import llm_client
 from app.models.userstate import NightlyPlan, SharedState
@@ -70,6 +71,67 @@ def run_gpt(state: SharedState) -> tuple[SharedState, str]:
 # Deterministic planner
 # ---------------------------------------------------------------------------
 
+
+def _collect_reflection_signals(state: SharedState) -> dict[str, Any]:
+    """Aggregate recent decision_context hints from journal reflections."""
+    preferred_orders: list[list[str]] = []
+    recommendation_notes: list[str] = []
+    risk_votes: dict[str, int] = {"protective": 0, "balanced": 0, "exploratory": 0}
+
+    for h in reversed(state.hypotheses):
+        if h.get("source") != "journal_reflection":
+            continue
+
+        raw_context = h.get("decision_context")
+        if not isinstance(raw_context, dict):
+            legacy_reflection = h.get("reflection")
+            raw_context = legacy_reflection.get("decision_context", {}) if isinstance(legacy_reflection, dict) else {}
+
+        if not isinstance(raw_context, dict):
+            continue
+
+        raw_order = raw_context.get("preferred_intervention_order")
+        if isinstance(raw_order, list):
+            preferred_orders.append([str(item) for item in raw_order if item])
+
+        note = raw_context.get("recommendation_notes")
+        if isinstance(note, str) and note.strip():
+            recommendation_notes.append(note.strip())
+
+        posture = raw_context.get("risk_posture")
+        if isinstance(posture, str) and posture in risk_votes:
+            risk_votes[posture] += 1
+
+        if len(preferred_orders) >= 3 and len(recommendation_notes) >= 3 and sum(risk_votes.values()) >= 3:
+            break
+
+    dominant_posture = "balanced"
+    if sum(risk_votes.values()) > 0:
+        dominant_posture = max(risk_votes, key=lambda k: risk_votes[k])
+
+    return {
+        "preferred_orders": preferred_orders,
+        "recommendation_notes": recommendation_notes,
+        "risk_posture": dominant_posture,
+    }
+
+
+def _choose_intervention_order(state: SharedState, reflection_signals: dict[str, Any]) -> list[str]:
+    prefs = state.preferences
+    disliked = set(prefs.disliked_audio)
+
+    for order in reflection_signals.get("preferred_orders", []):
+        clean = [t for t in order if t in _VALID_INTERVENTION_TYPES and t not in disliked]
+        if clean:
+            return clean
+
+    fallback = [t for t in prefs.preferred_audio if t in _VALID_INTERVENTION_TYPES and t not in disliked]
+    if fallback:
+        return fallback
+
+    return ["brown_noise", "breathing_pace", "rain"]
+
+
 def _build_plan_deterministic(state: SharedState) -> NightlyPlan:
     prefs = state.preferences
 
@@ -83,15 +145,32 @@ def _build_plan_deterministic(state: SharedState) -> NightlyPlan:
         elif any("awaken" in g or "interrupt" in g for g in lower):
             goal = "reduce_awakenings"
 
-    intervention_order = list(prefs.preferred_audio) if prefs.preferred_audio else [
-        "brown_noise", "breathing_pace", "rain"
-    ]
+    reflection_signals = _collect_reflection_signals(state)
+    intervention_order = _choose_intervention_order(state, reflection_signals)
+
+    posture = reflection_signals["risk_posture"]
+    if posture == "protective":
+        goal = "reduce_awakenings"
+    elif posture == "exploratory" and goal == "balanced_sleep":
+        goal = "recovery"
+
+    recommendation_note = (
+        reflection_signals["recommendation_notes"][0]
+        if reflection_signals["recommendation_notes"]
+        else "No recent reflection guidance available."
+    )
+
+    notes = (
+        f"Deterministic plan. Goals: {', '.join(prefs.goals) or 'none'}. "
+        f"Risk posture: {posture}. "
+        f"Reflection guidance: {recommendation_note}"
+    )
 
     return NightlyPlan(
         target_bedtime="23:00",
         target_wake_time=prefs.target_wake_time,
         sleep_goal=goal,
-        notes=f"Deterministic plan. Goals: {', '.join(prefs.goals) or 'none'}.",
+        notes=notes,
         preferred_intervention_order=intervention_order,
     )
 
