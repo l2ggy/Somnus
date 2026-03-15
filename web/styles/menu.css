@@ -55,6 +55,20 @@
   height: auto;
 }
 
+@media (min-width: 900px) {
+  .menu-screen__content {
+    padding-top: clamp(0.9rem, 2.2vw, 1.8rem);
+  }
+
+  .menu-screen__logo {
+    width: clamp(8.75rem, 16vw, 14rem);
+  }
+
+  .menu-screen__divider {
+    margin-top: clamp(0.55rem, 1.4vw, 1rem);
+  }
+}
+
 .menu-screen__menu-link {
   margin-top: 0.3rem;
   color: var(--color-white);
