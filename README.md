@@ -25,6 +25,7 @@ fastapi uvicorn pydantic openai python-dotenv
 - Project proposal: `PROJECT_PROPOSAL.md`
 - Web/mobile deployment plan: `DEPLOYMENT_WEB_MOBILE.md`
 - Backend deployment runbook (Render Web Service, no-local terminal): `docs/BACKEND_DEPLOY_RENDER.md`
+- Frontend deployment setup (Vercel, no-local terminal): `docs/FRONTEND_DEPLOY_VERCEL.md`
 
 ## Resources and References
 
