@@ -1,0 +1,79 @@
+:root {
+  --color-white: #ffffff;
+  --color-gray-indigo: #a29fb8;
+  --font-primary: 'Body Grotesque', 'Avenir Next', 'Avenir', 'Segoe UI', sans-serif;
+  --screen-max-width: 430px;
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --anim-pop-duration: 700ms;
+  --anim-fade-duration: 900ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: #271669;
+  color: var(--color-white);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* Reusable reveal animations for the app UI */
+@keyframes somnusFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes somnusPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+    filter: blur(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.reveal-fade {
+  animation: somnusFadeIn var(--anim-fade-duration) var(--ease-soft) both;
+}
+
+.reveal-pop {
+  animation: somnusPopIn var(--anim-pop-duration) var(--ease-soft) both;
+}
+
+.reveal-delay-1 {
+  animation-delay: 120ms;
+}
+
+.reveal-delay-2 {
+  animation-delay: 260ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-fade,
+  .reveal-pop {
+    animation: none;
+  }
+}

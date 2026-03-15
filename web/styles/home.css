@@ -1,0 +1,54 @@
+.home-screen {
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+}
+
+.home-screen__background {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.home-screen__content {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  width: min(100%, var(--screen-max-width));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.home-screen__logo {
+  width: clamp(12rem, 60vw, 15rem);
+  height: auto;
+}
+
+.home-screen__prompt {
+  margin: 0;
+  color: var(--color-white);
+  font-size: clamp(1rem, 4.5vw, 1.25rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 768px) {
+  .home-screen__background {
+    content: url('/assets/BackgroundLandscape.svg');
+  }
+
+  .home-screen__content {
+    justify-content: flex-end;
+    padding-bottom: 12vh;
+  }
+}
