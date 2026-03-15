@@ -108,6 +108,14 @@ def session_state(user_id: str):
     return _require_session(user_id)
 
 
+@app.get("/session/{user_id}/journal", tags=["session"])
+def session_journal_list(user_id: str):
+    """Return a session's journal entries, newest first."""
+    state = _require_session(user_id)
+    entries = list(reversed(state.journal_history))
+    return {"user_id": user_id, "entries": entries}
+
+
 @app.post("/session/{user_id}/journal", tags=["session"])
 def session_journal(
     user_id: str,

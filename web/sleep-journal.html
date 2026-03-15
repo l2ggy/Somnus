@@ -24,15 +24,114 @@
 
           <section class="journal-panel" aria-label="Journal entry panel">
             <div class="journal-panel__date-row">
-              <button type="button" class="journal-panel__arrow" aria-label="Previous date">←</button>
-              <p class="journal-panel__date">Monday, March 9 2025</p>
-              <button type="button" class="journal-panel__arrow" aria-label="Next date">→</button>
+              <button type="button" class="journal-panel__arrow" id="journal-prev" aria-label="Previous date">←</button>
+              <p class="journal-panel__date" id="journal-date">Loading...</p>
+              <button type="button" class="journal-panel__arrow" id="journal-next" aria-label="Next date">→</button>
             </div>
 
-            <p class="journal-panel__status">Somnus did not analyze your sleep this night.</p>
+            <p class="journal-panel__status" id="journal-status" aria-live="polite">Loading your journal entries...</p>
+            <article id="journal-entry" hidden>
+              <p><strong>Rested score:</strong> <span id="journal-rested"></span>/10</p>
+              <p><strong>Awakenings reported:</strong> <span id="journal-awakenings"></span></p>
+              <p><strong>Notes:</strong> <span id="journal-notes"></span></p>
+            </article>
           </section>
         </div>
       </section>
     </main>
+
+    <script>
+      const storageKey = 'somnus_demo_user_id';
+      const prevBtn = document.getElementById('journal-prev');
+      const nextBtn = document.getElementById('journal-next');
+      const dateEl = document.getElementById('journal-date');
+      const statusEl = document.getElementById('journal-status');
+      const entryEl = document.getElementById('journal-entry');
+      const restedEl = document.getElementById('journal-rested');
+      const awakeningsEl = document.getElementById('journal-awakenings');
+      const notesEl = document.getElementById('journal-notes');
+
+      let entries = [];
+      let currentIndex = 0;
+
+      function getStoredUserId() {
+        return (localStorage.getItem(storageKey) || '').trim();
+      }
+
+      function formatDate(dateValue) {
+        if (!dateValue) return 'Unknown date';
+        const parsed = new Date(`${dateValue}T00:00:00`);
+        if (Number.isNaN(parsed.getTime())) return dateValue;
+        return parsed.toLocaleDateString(undefined, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        });
+      }
+
+      function renderEntry() {
+        const hasEntries = entries.length > 0;
+        prevBtn.disabled = !hasEntries || currentIndex >= entries.length - 1;
+        nextBtn.disabled = !hasEntries || currentIndex <= 0;
+
+        if (!hasEntries) {
+          dateEl.textContent = 'No journal entries yet';
+          statusEl.textContent = 'Complete a sleep session to create your first entry.';
+          entryEl.hidden = true;
+          return;
+        }
+
+        const entry = entries[currentIndex];
+        dateEl.textContent = formatDate(entry.date);
+        statusEl.textContent = '';
+        restedEl.textContent = entry.rested_score;
+        awakeningsEl.textContent = entry.awakenings_reported;
+        notesEl.textContent = entry.notes || 'No notes.';
+        entryEl.hidden = false;
+      }
+
+      prevBtn.addEventListener('click', () => {
+        currentIndex = Math.min(entries.length - 1, currentIndex + 1);
+        renderEntry();
+      });
+
+      nextBtn.addEventListener('click', () => {
+        currentIndex = Math.max(0, currentIndex - 1);
+        renderEntry();
+      });
+
+      async function loadJournal() {
+        const userId = getStoredUserId();
+        if (!userId) {
+          dateEl.textContent = 'Demo User ID missing';
+          statusEl.textContent = 'Set Demo User ID on the Menu page first.';
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/session/${encodeURIComponent(userId)}/journal`);
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Request failed (${response.status})`);
+          }
+
+          const data = await response.json();
+          entries = Array.isArray(data.entries) ? data.entries : [];
+          currentIndex = 0;
+          renderEntry();
+        } catch (error) {
+          dateEl.textContent = 'Unable to load entries';
+          statusEl.textContent = `Could not load journal entries (${error.message}).`;
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          entryEl.hidden = true;
+        }
+      }
+
+      loadJournal();
+    </script>
   </body>
 </html>
