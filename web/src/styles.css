@@ -1,0 +1,45 @@
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  color: #f4f1ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.home-screen {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.25rem;
+  background-image: url('/BackgroundPortraitDarker.svg');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  padding: 2rem 1.5rem;
+}
+
+.somnus-logo {
+  width: min(62vw, 360px);
+  max-width: 100%;
+  height: auto;
+}
+
+.tap-to-start {
+  margin: 0;
+  text-transform: lowercase;
+  font-size: clamp(1.15rem, 1.8vw + 0.9rem, 1.6rem);
+  letter-spacing: 0.2em;
+  font-weight: 300;
+  color: #f6f4ff;
+  text-shadow: 0 0 14px rgba(220, 214, 255, 0.35);
+  user-select: none;
+}
