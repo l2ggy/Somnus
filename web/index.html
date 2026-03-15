@@ -10,7 +10,8 @@
   <body>
     <main class="home-screen" aria-label="Somnus home screen">
       <img
-        class="home-screen__background"
+        class="home-screen__background anim-fade-in"
+        style="--anim-delay: 80ms"
         src="/assets/BackgroundPortrait.svg"
         alt=""
         aria-hidden="true"
@@ -18,14 +19,17 @@
 
       <section class="home-screen__content" aria-label="Welcome">
         <img
-          class="home-screen__logo"
+          class="home-screen__logo anim-pop-in"
+          style="--anim-delay: 220ms"
           src="/assets/Logo.svg"
           alt="Somnus"
           width="230"
           height="71"
         />
 
-        <p class="home-screen__prompt">Tap to start</p>
+        <p class="home-screen__prompt anim-pop-in anim-pulse" style="--anim-delay: 420ms">
+          Tap to start
+        </p>
       </section>
     </main>
   </body>
