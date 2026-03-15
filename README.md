@@ -10,6 +10,9 @@ Try it out:
 - [Youtube Demo]()
 - [Canva Presentation](https://www.canva.com/design/DAHD6B1R3jA/Z2kF_LeWoFk4smkhWoUUJw/view?utm_content=DAHD6B1R3jA&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hdf3b9a7fe8)
 
+Deployed API:
+- https://somnus-api.onrender.com
+
 fastapi uvicorn pydantic openai python-dotenv
 
 ## Workflow 

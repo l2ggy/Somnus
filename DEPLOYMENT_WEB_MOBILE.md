@@ -107,7 +107,7 @@ FastAPI (Docker on Render/Railway/Fly)
 
 ### Frontend on Vercel
 1. Import Next.js repo.
-2. Set env var `NEXT_PUBLIC_API_BASE_URL` to backend URL.
+2. Set env var `NEXT_PUBLIC_API_BASE_URL=https://somnus-api.onrender.com`.
 3. Deploy; configure custom domain + HTTPS.
 4. Add PWA plugin/config and verify installability on iOS/Android.
 
