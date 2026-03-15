@@ -111,15 +111,33 @@
           return;
         }
 
+        const encodedUserId = encodeURIComponent(userId);
+
         try {
-          const response = await fetch(`/api/session/${encodeURIComponent(userId)}/journal`);
-          if (!response.ok) {
+          const response = await fetch(`/api/session/${encodedUserId}/journal`);
+          if (response.ok) {
+            const data = await response.json();
+            entries = Array.isArray(data.entries) ? data.entries : [];
+            currentIndex = 0;
+            renderEntry();
+            return;
+          }
+
+          if (response.status !== 405) {
             const errorText = await response.text();
             throw new Error(errorText || `Request failed (${response.status})`);
           }
 
-          const data = await response.json();
-          entries = Array.isArray(data.entries) ? data.entries : [];
+          const fallbackResponse = await fetch(`/api/session/${encodedUserId}/state`);
+          if (!fallbackResponse.ok) {
+            const errorText = await fallbackResponse.text();
+            throw new Error(errorText || `Fallback request failed (${fallbackResponse.status})`);
+          }
+
+          const stateData = await fallbackResponse.json();
+          entries = Array.isArray(stateData.journal_history)
+            ? [...stateData.journal_history].reverse()
+            : [];
           currentIndex = 0;
           renderEntry();
         } catch (error) {
