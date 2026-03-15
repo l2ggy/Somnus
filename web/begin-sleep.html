@@ -9,7 +9,7 @@
   </head>
   <body>
     <main class="menu-screen" aria-label="Begin Sleep screen">
-      <img class="menu-screen__background anim-fade-in" style="--anim-delay: 80ms" src="/assets/BackgroundPortrait.svg" alt="" aria-hidden="true" />
+      <img class="menu-screen__background" src="/assets/BackgroundPortrait.svg" alt="" aria-hidden="true" />
       <section class="menu-screen__content" aria-label="Begin Sleep">
         <header class="menu-screen__header anim-pop-in" style="--anim-delay: 120ms">
           <div class="menu-screen__header-top">
@@ -18,10 +18,189 @@
           </div>
           <div class="menu-screen__divider" aria-hidden="true"></div>
         </header>
+
         <div class="menu-screen__body menu-screen__body--page anim-pop-in" style="--anim-delay: 220ms">
           <h1 class="menu-screen__title">Begin Sleep</h1>
+
+          <section class="quiz-panel" aria-label="Begin sleep setup quiz">
+            <p class="quiz-panel__flow">Set wake-up time → Set wake-up audio → Begin sleep</p>
+
+            <div class="quiz-panel__progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="20" aria-label="Quiz progress">
+              <div class="quiz-panel__progress-fill" id="quiz-progress-fill"></div>
+            </div>
+
+            <form id="begin-sleep-quiz" class="quiz-panel__form">
+              <section class="quiz-step" data-step="0">
+                <h2 class="quiz-step__title">Who is sleeping tonight?</h2>
+                <label class="quiz-step__label" for="user-id">User ID</label>
+                <input id="user-id" name="user_id" class="quiz-step__input" type="text" placeholder="e.g. jessica" required />
+              </section>
+
+              <section class="quiz-step" data-step="1" hidden>
+                <h2 class="quiz-step__title">Set wake-up time</h2>
+                <label class="quiz-step__label" for="wake-time">Target wake-up time</label>
+                <input id="wake-time" name="target_wake_time" class="quiz-step__input" type="time" value="07:30" required />
+              </section>
+
+              <section class="quiz-step" data-step="2" hidden>
+                <h2 class="quiz-step__title">Set wake-up audio</h2>
+                <p class="quiz-step__hint">Choose preferred sounds Somnus should use first.</p>
+                <div class="quiz-step__grid">
+                  <label><input type="checkbox" name="preferred_audio" value="brown_noise" checked /> Brown noise</label>
+                  <label><input type="checkbox" name="preferred_audio" value="white_noise" /> White noise</label>
+                  <label><input type="checkbox" name="preferred_audio" value="pink_noise" /> Pink noise</label>
+                  <label><input type="checkbox" name="preferred_audio" value="rain" checked /> Rain</label>
+                  <label><input type="checkbox" name="preferred_audio" value="waves" /> Waves</label>
+                  <label><input type="checkbox" name="preferred_audio" value="breathing_pace" /> Breathing pace</label>
+                </div>
+              </section>
+
+              <section class="quiz-step" data-step="3" hidden>
+                <h2 class="quiz-step__title">Sounds to avoid</h2>
+                <p class="quiz-step__hint">Somnus will never pick these.</p>
+                <div class="quiz-step__grid">
+                  <label><input type="checkbox" name="disliked_audio" value="brown_noise" /> Brown noise</label>
+                  <label><input type="checkbox" name="disliked_audio" value="white_noise" /> White noise</label>
+                  <label><input type="checkbox" name="disliked_audio" value="pink_noise" /> Pink noise</label>
+                  <label><input type="checkbox" name="disliked_audio" value="rain" /> Rain</label>
+                  <label><input type="checkbox" name="disliked_audio" value="waves" /> Waves</label>
+                  <label><input type="checkbox" name="disliked_audio" value="breathing_pace" /> Breathing pace</label>
+                </div>
+              </section>
+
+              <section class="quiz-step" data-step="4" hidden>
+                <h2 class="quiz-step__title">Sleep goals</h2>
+                <p class="quiz-step__hint">Pick one or more goals for tonight.</p>
+                <div class="quiz-step__grid">
+                  <label><input type="checkbox" name="goals" value="maximize deep sleep" checked /> Maximize deep sleep</label>
+                  <label><input type="checkbox" name="goals" value="fall asleep faster" /> Fall asleep faster</label>
+                  <label><input type="checkbox" name="goals" value="reduce awakenings" /> Reduce awakenings</label>
+                  <label><input type="checkbox" name="goals" value="wake up smoothly" checked /> Wake up smoothly</label>
+                </div>
+              </section>
+
+              <section class="quiz-step" data-step="5" hidden>
+                <h2 class="quiz-step__title">Intervention strength</h2>
+                <p class="quiz-step__hint">How aggressively should Somnus intervene?</p>
+                <div class="quiz-step__radio-group">
+                  <label><input type="radio" name="intervention_aggressiveness" value="low" /> Low</label>
+                  <label><input type="radio" name="intervention_aggressiveness" value="medium" checked /> Medium</label>
+                  <label><input type="radio" name="intervention_aggressiveness" value="high" /> High</label>
+                </div>
+              </section>
+
+              <div class="quiz-panel__actions">
+                <button type="button" id="quiz-back" class="quiz-button quiz-button--ghost" hidden>Back</button>
+                <button type="button" id="quiz-next" class="quiz-button">Next</button>
+                <button type="submit" id="quiz-submit" class="quiz-button" hidden>Start sleep session</button>
+              </div>
+              <p id="quiz-status" class="quiz-panel__status" aria-live="polite"></p>
+            </form>
+          </section>
         </div>
       </section>
     </main>
+
+    <script>
+      const form = document.getElementById('begin-sleep-quiz');
+      const steps = Array.from(document.querySelectorAll('.quiz-step'));
+      const backButton = document.getElementById('quiz-back');
+      const nextButton = document.getElementById('quiz-next');
+      const submitButton = document.getElementById('quiz-submit');
+      const progressFill = document.getElementById('quiz-progress-fill');
+      const progressBar = document.querySelector('.quiz-panel__progress');
+      const statusText = document.getElementById('quiz-status');
+      let currentStep = 0;
+
+      function readMulti(name) {
+        return Array.from(form.querySelectorAll(`input[name="${name}"]:checked`)).map((node) => node.value);
+      }
+
+      function validateStep(stepIndex) {
+        if (stepIndex === 0) {
+          const userId = form.user_id.value.trim();
+          if (!userId) {
+            statusText.textContent = 'Please enter a user ID before continuing.';
+            return false;
+          }
+        }
+        return true;
+      }
+
+      function renderStep() {
+        steps.forEach((step, idx) => {
+          step.hidden = idx !== currentStep;
+        });
+
+        const percent = ((currentStep + 1) / steps.length) * 100;
+        progressFill.style.width = `${percent}%`;
+        progressBar.setAttribute('aria-valuenow', String(Math.round(percent)));
+
+        backButton.hidden = currentStep === 0;
+        nextButton.hidden = currentStep === steps.length - 1;
+        submitButton.hidden = currentStep !== steps.length - 1;
+        statusText.textContent = '';
+      }
+
+      nextButton.addEventListener('click', () => {
+        if (!validateStep(currentStep)) return;
+        currentStep = Math.min(currentStep + 1, steps.length - 1);
+        renderStep();
+      });
+
+      backButton.addEventListener('click', () => {
+        currentStep = Math.max(currentStep - 1, 0);
+        renderStep();
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const userId = form.user_id.value.trim();
+        if (!userId) {
+          statusText.textContent = 'Please enter a user ID.';
+          return;
+        }
+
+        const payload = {
+          user_id: userId,
+          preferences: {
+            goals: readMulti('goals'),
+            disliked_audio: readMulti('disliked_audio'),
+            preferred_audio: readMulti('preferred_audio'),
+            target_wake_time: form.target_wake_time.value || '07:30',
+            intervention_aggressiveness: form.intervention_aggressiveness.value || 'medium',
+          },
+          journal_history: [],
+        };
+
+        const configuredBase = window.SOMNUS_API_BASE_URL || localStorage.getItem('SOMNUS_API_BASE_URL') || '';
+        const defaultBase = location.hostname === '127.0.0.1' || location.hostname === 'localhost' ? 'http://127.0.0.1:8000' : '';
+        const apiBase = configuredBase || defaultBase;
+
+        statusText.textContent = 'Starting sleep session...';
+        submitButton.disabled = true;
+
+        try {
+          const response = await fetch(`${apiBase}/session/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Request failed (${response.status})`);
+          }
+
+          statusText.textContent = 'Session started successfully. Somnus is ready for tonight.';
+        } catch (error) {
+          statusText.textContent = `Could not start session: ${error.message}`;
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+
+      renderStep();
+    </script>
   </body>
 </html>
