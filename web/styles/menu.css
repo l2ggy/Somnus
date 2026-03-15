@@ -301,6 +301,30 @@
   font-size: clamp(1rem, 3.5vw, 1.35rem);
 }
 
+
+.sleep-session-screen__telemetry {
+  display: grid;
+  gap: 0.35rem;
+  width: min(100%, 28rem);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.8rem;
+  background: rgba(24, 19, 57, 0.32);
+  padding: 0.8rem 0.95rem;
+}
+
+.sleep-session-screen__db,
+.sleep-session-screen__db-max,
+.sleep-session-screen__intervention {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: clamp(0.95rem, 3vw, 1.12rem);
+}
+
+.sleep-session-screen__intervention {
+  color: rgba(194, 238, 255, 0.95);
+  font-weight: 600;
+}
+
 .sleep-session-screen__cancel {
   margin-top: 0.45rem;
   border: 0;
