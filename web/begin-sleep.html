@@ -89,8 +89,8 @@
 
               <section class="begin-sleep-step" data-step="3" hidden>
                 <h2 class="begin-sleep-step__title">Ready to begin</h2>
-                <p class="begin-sleep-step__hint">We’ll send these preferences to <code>/api/session/start</code>.</p>
-                <pre id="payload-preview" class="begin-sleep-preview"></pre>
+                <p class="begin-sleep-step__hint">Confirm your sleep setup before we start.</p>
+                <div id="payload-preview" class="begin-sleep-preview" aria-live="polite"></div>
               </section>
 
               <div class="begin-sleep-actions">
@@ -256,6 +256,44 @@
         const period = hour >= 12 ? 'PM' : 'AM';
         const normalizedHour = hour % 12 || 12;
         return `${normalizedHour}:${String(minute).padStart(2, '0')} ${period}`;
+      }
+
+      function formatEnumLabel(value) {
+        return String(value || '')
+          .split('_')
+          .filter(Boolean)
+          .map((segment) => segment[0].toUpperCase() + segment.slice(1))
+          .join(' ');
+      }
+
+      function formatAudioList(values) {
+        if (!Array.isArray(values) || values.length === 0) return 'None selected';
+        return values.map(formatEnumLabel).join(', ');
+      }
+
+      function renderPayloadSummary(payload) {
+        if (!payloadPreview) return;
+
+        const prefs = payload?.preferences || {};
+        const summaryRows = [
+          { label: 'Demo user ID', value: payload?.user_id || 'Not set' },
+          { label: 'Wake-up time', value: formatWakeTime(prefs.target_wake_time) },
+          { label: 'Sleep goal', value: formatEnumLabel((prefs.goals || [])[0]) || 'Not selected' },
+          { label: 'Intervention level', value: formatEnumLabel(prefs.intervention_aggressiveness) || 'Not selected' },
+          { label: 'Preferred audio', value: formatAudioList(prefs.preferred_audio) },
+          { label: 'Disliked audio', value: formatAudioList(prefs.disliked_audio) },
+        ];
+
+        payloadPreview.innerHTML = summaryRows
+          .map(
+            ({ label, value }) => `
+              <div class="begin-sleep-preview__row">
+                <p class="begin-sleep-preview__label">${label}</p>
+                <p class="begin-sleep-preview__value">${value}</p>
+              </div>
+            `,
+          )
+          .join('');
       }
 
       function setExperienceState(state) {
@@ -500,7 +538,7 @@
         submitBtn.hidden = currentStep !== steps.length - 1;
 
         if (currentStep === steps.length - 1 && payloadPreview) {
-          payloadPreview.textContent = JSON.stringify(collectPayload(), null, 2);
+          renderPayloadSummary(collectPayload());
         }
       }
 

@@ -702,9 +702,32 @@
   padding: 0.75rem;
   max-height: 15rem;
   overflow: auto;
-  font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.95);
   background: rgba(39, 22, 105, 0.22);
+  display: grid;
+  gap: 0.65rem;
+}
+
+.begin-sleep-preview__row {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.7rem;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.begin-sleep-preview__label {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(210, 214, 255, 0.95);
+}
+
+.begin-sleep-preview__value {
+  margin: 0.2rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .begin-sleep-actions {
