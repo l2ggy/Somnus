@@ -15,7 +15,23 @@ Deployed API:
 
 fastapi uvicorn pydantic openai python-dotenv
 
-## Workflow 
+## Workflow
+Workload was divided as follows:
+- Boris: AI/ML Lead -- model architecture, training, evaluation, and optimization
+- Jessica: Data & Backend Lead -- data collection, database management, API development, and integration
+- Nicole: Product/submission lead -- presentation, demo video, design concept, documentation
+
+**Boris**
+- blah blah blah, name specific GitHub folders/files if possible
+
+**Jessica**
+- blah blah blah, name specific GitHub folders/files if possible
+
+**Nicole**
+- Made canva presentation and directed demo video
+- Lead product design (see `assets-and-branding/brand-kit/WebappDesignConcept.pdf`)
+- Designed logo and branding assets (see `assets-and-branding/` folder)
+- General bookkeeping and documentation of README, Devpost, etc.
 
 ## Future Improvements 
 - Scale from web app to native
